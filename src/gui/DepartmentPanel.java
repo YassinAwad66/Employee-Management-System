@@ -172,7 +172,7 @@ public class DepartmentPanel extends JPanel {
         List<Department> list = departmentManager.getAllDepartments();
         for (Department d : list) {
             tableModel.addRow(new Object[]{
-                d.getDepartmentId(),
+                d.getId(),
                 d.getName(),
                 employeeManager.countByDepartment(d.getName())
             });
