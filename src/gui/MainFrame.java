@@ -1,756 +1,202 @@
 package gui;
 
 import java.awt.*;
-import java.awt.event.*;
-import java.util.ArrayList;
-import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-
-import com.formdev.flatlaf.FlatLightLaf;
+import model.*;
+import service.*;
 
 public class MainFrame extends JFrame {
 
-    // ================= COLORS =================
+    // Colors
+    private static final Color BG = new Color(246, 245, 250);
+    private static final Color WHITE = Color.WHITE;
+    private static final Color PURPLE = new Color(105, 76, 160);
+    private static final Color LIGHT_PURPLE = new Color(239, 234, 248);
+    private static final Color TEXT = new Color(45, 42, 55);
+    private static final Color MUTED = new Color(135, 130, 145);
+    private static final Color BORDER = new Color(230, 226, 237);
 
-    private final Color PURPLE = new Color(111, 78, 165);
-    private final Color DARK_PURPLE = new Color(43, 34, 61);
-    private final Color SIDEBAR_HOVER = new Color(67, 53, 91);
-    private final Color GREEN = new Color(75, 160, 125);
+    // Panel names
+    private static final String DASHBOARD = "Dashboard";
+    private static final String ADD = "Add Employee";
+    private static final String VIEW = "View Employees";
+    private static final String SEARCH = "Search";
+    private static final String UPDATE = "Update Employee";
+    private static final String DEPARTMENTS = "Departments";
 
-    private final Color BACKGROUND = new Color(247, 246, 250);
-    private final Color WHITE = Color.WHITE;
-    private final Color TEXT = new Color(43, 40, 52);
-    private final Color MUTED = new Color(145, 140, 155);
-    private final Color BORDER = new Color(235, 232, 240);
+    private final CardLayout cardLayout = new CardLayout();
+    private final JPanel contentPanel = new JPanel(cardLayout);
 
-    // ================= COMPONENTS =================
+    private DashboardPanel dashboardPanel;
+    private AddEmployeePanel addPanel;
+    private ViewEmployeesPanel viewPanel;
+    private SearchPanel searchPanel;
+    private UpdateEmployeePanel updatePanel;
+    private DepartmentPanel departmentPanel;
 
-    private JPanel mainPanel;
-    private CardLayout cardLayout;
+    private final EmployeeManager employeeManager;
+    private final DepartmentManager departmentManager;
+    private final AuthService authService;
 
-    private JLabel pageTitle;
-    private JLabel pageSubtitle;
+    private final java.util.Map<String, JButton> navButtons = new java.util.LinkedHashMap<>();
 
-    private final List<JButton> navigationButtons = new ArrayList<>();
-
-    // ================= CONSTRUCTOR =================
-
-    public MainFrame() {
+    public MainFrame(EmployeeManager em, DepartmentManager dm, AuthService a) {
+        this.employeeManager = em;
+        this.departmentManager = dm;
+        this.authService = a;
 
         setTitle("Employee Management System");
-        setSize(1250, 780);
-        setMinimumSize(new Dimension(1050, 680));
-
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(1200, 760);
+        setMinimumSize(new Dimension(1000, 650));
         setLocationRelativeTo(null);
 
-        setLayout(new BorderLayout());
+        Runnable refresh = this::refreshAllPanels;
 
-        // Sidebar
-        add(createSidebar(), BorderLayout.WEST);
+        dashboardPanel = new DashboardPanel(em, dm);
+        addPanel = new AddEmployeePanel(em, dm, refresh);
+        viewPanel = new ViewEmployeesPanel(em, dm, refresh);
+        searchPanel = new SearchPanel(em, dm);
+        updatePanel = new UpdateEmployeePanel(em, dm, refresh);
+        departmentPanel = new DepartmentPanel(dm, em, refresh);
 
-        // Main Content
-        JPanel contentPanel = new JPanel(new BorderLayout());
-        contentPanel.setBackground(BACKGROUND);
+        contentPanel.setBackground(BG);
+        contentPanel.add(dashboardPanel, DASHBOARD);
+        contentPanel.add(addPanel, ADD);
+        contentPanel.add(viewPanel, VIEW);
+        contentPanel.add(searchPanel, SEARCH);
+        contentPanel.add(updatePanel, UPDATE);
+        contentPanel.add(departmentPanel, DEPARTMENTS);
 
-        contentPanel.add(createHeader(), BorderLayout.NORTH);
+        JPanel root = new JPanel(new BorderLayout());
+        root.add(buildSidebar(), BorderLayout.WEST);
+        root.add(contentPanel, BorderLayout.CENTER);
+        setContentPane(root);
 
-        // Pages
-        cardLayout = new CardLayout();
-
-        mainPanel = new JPanel(cardLayout);
-        mainPanel.setBackground(BACKGROUND);
-
-        mainPanel.add(createDashboard(), "Dashboard");
-        mainPanel.add(new EmployeeFormPanel(), "Add Employee");
-        mainPanel.add(new EmployeeTablePanel(), "Employees");
-
-        contentPanel.add(mainPanel, BorderLayout.CENTER);
-
-        add(contentPanel, BorderLayout.CENTER);
-
-        showPage("Dashboard");
-
+        showPanel(DASHBOARD);
     }
 
     // ================= SIDEBAR =================
 
-    private JPanel createSidebar() {
-
+    private JPanel buildSidebar() {
         JPanel sidebar = new JPanel();
-
-        sidebar.setPreferredSize(new Dimension(245, 0));
-        sidebar.setBackground(DARK_PURPLE);
-
-        sidebar.setLayout(new BoxLayout(
-                sidebar, BoxLayout.Y_AXIS
+        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
+        sidebar.setBackground(WHITE);
+        sidebar.setPreferredSize(new Dimension(240, 0));
+        sidebar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER),
+                new EmptyBorder(25, 18, 25, 18)
         ));
 
-        sidebar.setBorder(
-                new EmptyBorder(32, 20, 25, 20)
-        );
+        // Brand
+        JLabel badge = new JLabel("EMS", SwingConstants.CENTER);
+        badge.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        badge.setForeground(WHITE);
+        badge.setOpaque(true);
+        badge.setBackground(PURPLE);
+        badge.setPreferredSize(new Dimension(44, 44));
 
-        // Logo
-        JLabel logo = new JLabel("ems.");
-        logo.setFont(new Font("Segoe UI", Font.BOLD, 34));
-        logo.setForeground(WHITE);
-        logo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel title = new JLabel("Employee System");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        title.setForeground(TEXT);
 
-        JLabel subtitle = new JLabel("EMPLOYEE MANAGEMENT");
-        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-        subtitle.setForeground(new Color(185, 175, 200));
-        subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel subtitle = new JLabel("Admin Panel");
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        subtitle.setForeground(MUTED);
 
-        sidebar.add(logo);
-        sidebar.add(Box.createVerticalStrut(3));
-        sidebar.add(subtitle);
+        JPanel titleBox = new JPanel();
+        titleBox.setLayout(new BoxLayout(titleBox, BoxLayout.Y_AXIS));
+        titleBox.setBackground(WHITE);
+        titleBox.add(title);
+        titleBox.add(Box.createVerticalStrut(3));
+        titleBox.add(subtitle);
 
-        sidebar.add(Box.createVerticalStrut(55));
+        JPanel brand = new JPanel(new BorderLayout(12, 0));
+        brand.setBackground(WHITE);
+        brand.add(badge, BorderLayout.WEST);
+        brand.add(titleBox, BorderLayout.CENTER);
+        brand.setAlignmentX(Component.LEFT_ALIGNMENT);
+        brand.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
 
-        // Menu
-        addSectionLabel(sidebar, "MAIN MENU");
-
-        sidebar.add(createNavButton("Dashboard", "Dashboard"));
-        sidebar.add(Box.createVerticalStrut(7));
-
-        sidebar.add(createNavButton("Employees", "Employees"));
-        sidebar.add(Box.createVerticalStrut(7));
-
-        sidebar.add(createNavButton("Add Employee", "Add Employee"));
-
+        sidebar.add(brand);
         sidebar.add(Box.createVerticalStrut(35));
 
-        // Other
-        addSectionLabel(sidebar, "PREFERENCES");
-
-        sidebar.add(createNavButton("Reports", null));
-        sidebar.add(Box.createVerticalStrut(7));
-
-        sidebar.add(createNavButton("Settings", null));
+        String[] names = {DASHBOARD, ADD, VIEW, SEARCH, UPDATE, DEPARTMENTS};
+        for (String name : names) {
+            JButton btn = createNavButton(name);
+            navButtons.put(name, btn);
+            sidebar.add(btn);
+            sidebar.add(Box.createVerticalStrut(8));
+        }
 
         sidebar.add(Box.createVerticalGlue());
 
-        // Sidebar Footer
-        JPanel footer = new JPanel();
-        footer.setLayout(new BoxLayout(
-                footer, BoxLayout.Y_AXIS
-        ));
-
-        footer.setBackground(DARK_PURPLE);
-        footer.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JSeparator separator = new JSeparator();
-        separator.setForeground(new Color(85, 72, 105));
-        separator.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 1)
-        );
-
-        JLabel version = new JLabel("EMS  |  Version 1.0");
-        version.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        version.setForeground(new Color(175, 165, 190));
-
-        footer.add(separator);
-        footer.add(Box.createVerticalStrut(17));
-        footer.add(version);
-
-        sidebar.add(footer);
+        JButton logout = createNavButton("Logout");
+        logout.setForeground(new Color(190, 60, 70));
+        logout.addActionListener(e -> handleLogout());
+        sidebar.add(logout);
 
         return sidebar;
     }
 
-    // ================= SECTION LABEL =================
-
-    private void addSectionLabel(JPanel panel, String text) {
-
-        JLabel label = new JLabel(text);
-
-        label.setFont(new Font(
-                "Segoe UI", Font.BOLD, 10
-        ));
-
-        label.setForeground(new Color(165, 150, 185));
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        panel.add(label);
-        panel.add(Box.createVerticalStrut(14));
+    private JButton createNavButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setForeground(TEXT);
+        btn.setBackground(WHITE);
+        btn.setHorizontalAlignment(SwingConstants.LEFT);
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setOpaque(true);
+        btn.setBorder(new EmptyBorder(12, 16, 12, 16));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+        btn.addActionListener(e -> showPanel(text));
+        return btn;
     }
 
-    // ================= NAVIGATION BUTTON =================
-
-    private JButton createNavButton(
-            String text,
-            String screen) {
-
-        JButton button = new JButton();
-
-        button.setLayout(new BorderLayout());
-
-        JLabel indicator = new JLabel(" ");
-        indicator.setPreferredSize(new Dimension(4, 0));
-
-        JLabel label = new JLabel(text);
-
-        label.setFont(new Font(
-                "Segoe UI", Font.PLAIN, 14
-        ));
-
-        label.setForeground(new Color(220, 215, 230));
-
-        JPanel inner = new JPanel(new BorderLayout());
-        inner.setOpaque(false);
-        inner.setBorder(
-                new EmptyBorder(0, 15, 0, 10)
-        );
-
-        inner.add(label, BorderLayout.CENTER);
-
-        button.add(indicator, BorderLayout.WEST);
-        button.add(inner, BorderLayout.CENTER);
-
-        button.setBackground(DARK_PURPLE);
-
-        button.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 46)
-        );
-
-        button.setPreferredSize(
-                new Dimension(205, 46)
-        );
-
-        button.setBorderPainted(false);
-        button.setFocusPainted(false);
-        button.setContentAreaFilled(true);
-
-        button.setCursor(
-                new Cursor(Cursor.HAND_CURSOR)
-        );
-
-        button.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        navigationButtons.add(button);
-
-        button.putClientProperty("screen", screen);
-
-        button.addMouseListener(new MouseAdapter() {
-
-            @Override
-            public void mouseEntered(MouseEvent e) {
-
-                if (!Boolean.TRUE.equals(
-                        button.getClientProperty("active"))) {
-
-                    button.setBackground(SIDEBAR_HOVER);
-                }
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-
-                if (!Boolean.TRUE.equals(
-                        button.getClientProperty("active"))) {
-
-                    button.setBackground(DARK_PURPLE);
-                }
-            }
-        });
-
-        button.addActionListener(e -> {
-
-            if (screen != null) {
-
-                showPage(screen);
-
-            } else {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "This section is coming soon!",
-                        "Information",
-                        JOptionPane.INFORMATION_MESSAGE
-                );
-            }
-        });
-
-        return button;
-    }
-
-    // ================= SHOW PAGE =================
-
-    private void showPage(String screen) {
-
-        cardLayout.show(mainPanel, screen);
-
-        switch (screen) {
-
-            case "Dashboard":
-                pageTitle.setText("Dashboard");
-                pageSubtitle.setText(
-                        "Overview of your employee management system"
-                );
-                break;
-
-            case "Employees":
-                pageTitle.setText("Employees");
-                pageSubtitle.setText(
-                        "View and manage your employees"
-                );
-                break;
-
-            case "Add Employee":
-                pageTitle.setText("Add Employee");
-                pageSubtitle.setText(
-                        "Create a new employee record"
-                );
-                break;
-        }
-
-        for (JButton button : navigationButtons) {
-
-            boolean selected = screen.equals(
-                    button.getClientProperty("screen")
-            );
-
-            button.putClientProperty("active", selected);
-
-            button.setBackground(
-                    selected ? SIDEBAR_HOVER : DARK_PURPLE
-            );
-
-            if (button.getComponentCount() > 0) {
-
-    Component indicator = button.getComponent(0);
-
-    if (indicator instanceof JLabel) {
-
-        JLabel indicatorLabel = (JLabel) indicator;
-
-        indicatorLabel.setBackground(GREEN);
-        indicatorLabel.setOpaque(selected);
-    }
-}
-            button.repaint();
-        }
-
-        mainPanel.revalidate();
-        mainPanel.repaint();
-    }
-
-    // ================= HEADER =================
-
-    private JPanel createHeader() {
-
-        JPanel header = new JPanel(new BorderLayout());
-
-        header.setBackground(WHITE);
-
-        header.setBorder(
-                new EmptyBorder(19, 35, 19, 35)
-        );
-
-        // Page Information
-        JPanel titlePanel = new JPanel();
-
-        titlePanel.setLayout(new BoxLayout(
-                titlePanel, BoxLayout.Y_AXIS
-        ));
-
-        titlePanel.setBackground(WHITE);
-
-        pageTitle = new JLabel("Dashboard");
-
-        pageTitle.setFont(new Font(
-                "Segoe UI", Font.BOLD, 20
-        ));
-
-        pageTitle.setForeground(TEXT);
-
-        pageSubtitle = new JLabel(
-                "Overview of your employee management system"
-        );
-
-        pageSubtitle.setFont(new Font(
-                "Segoe UI", Font.PLAIN, 12
-        ));
-
-        pageSubtitle.setForeground(MUTED);
-
-        titlePanel.add(pageTitle);
-        titlePanel.add(Box.createVerticalStrut(5));
-        titlePanel.add(pageSubtitle);
-
-        // Admin Profile
-        JPanel adminPanel = new JPanel(
-                new FlowLayout(FlowLayout.RIGHT, 12, 3)
-        );
-
-        adminPanel.setBackground(WHITE);
-
-        JPanel avatar = new JPanel(new GridBagLayout());
-
-        avatar.setPreferredSize(new Dimension(40, 40));
-        avatar.setBackground(LIGHT_PURPLE());
-
-        JLabel avatarLetter = new JLabel("A");
-
-        avatarLetter.setFont(new Font(
-                "Segoe UI", Font.BOLD, 16
-        ));
-
-        avatarLetter.setForeground(PURPLE);
-
-        avatar.add(avatarLetter);
-
-        JPanel adminInfo = new JPanel();
-
-        adminInfo.setLayout(new BoxLayout(
-                adminInfo, BoxLayout.Y_AXIS
-        ));
-
-        adminInfo.setBackground(WHITE);
-
-        JLabel adminName = new JLabel("Administrator");
-
-        adminName.setFont(new Font(
-                "Segoe UI", Font.BOLD, 13
-        ));
-
-        adminName.setForeground(TEXT);
-
-        JLabel adminRole = new JLabel("System Admin");
-
-        adminRole.setFont(new Font(
-                "Segoe UI", Font.PLAIN, 11
-        ));
-
-        adminRole.setForeground(MUTED);
-
-        adminInfo.add(adminName);
-        adminInfo.add(Box.createVerticalStrut(4));
-        adminInfo.add(adminRole);
-
-        adminPanel.add(adminInfo);
-        adminPanel.add(avatar);
-
-        header.add(titlePanel, BorderLayout.WEST);
-        header.add(adminPanel, BorderLayout.EAST);
-
-        return header;
-    }
-
-    private Color LIGHT_PURPLE() {
-        return new Color(239, 233, 248);
-    }
-
-    // ================= DASHBOARD =================
-
-    private JPanel createDashboard() {
-
-        JPanel dashboard = new JPanel(
-                new BorderLayout(0, 28)
-        );
-
-        dashboard.setBackground(BACKGROUND);
-
-        dashboard.setBorder(
-                new EmptyBorder(35, 40, 35, 40)
-        );
-
-        // Welcome
-        JPanel welcomePanel = new JPanel();
-
-        welcomePanel.setLayout(new BoxLayout(
-                welcomePanel, BoxLayout.Y_AXIS
-        ));
-
-        welcomePanel.setBackground(BACKGROUND);
-
-        JLabel welcome = new JLabel("Welcome Back!");
-
-        welcome.setFont(new Font(
-                "Segoe UI", Font.BOLD, 27
-        ));
-
-        welcome.setForeground(TEXT);
-
-        JLabel description = new JLabel(
-                "Here's what's happening with your employees today."
-        );
-
-        description.setFont(new Font(
-                "Segoe UI", Font.PLAIN, 14
-        ));
-
-        description.setForeground(MUTED);
-
-        welcomePanel.add(welcome);
-        welcomePanel.add(Box.createVerticalStrut(8));
-        welcomePanel.add(description);
-
-        dashboard.add(welcomePanel, BorderLayout.NORTH);
-
-        // Center
-        JPanel centerPanel = new JPanel();
-
-        centerPanel.setLayout(new BoxLayout(
-                centerPanel, BoxLayout.Y_AXIS
-        ));
-
-        centerPanel.setBackground(BACKGROUND);
-
-        // Statistics
-        JPanel cardsPanel = new JPanel(
-                new GridLayout(1, 4, 16, 0)
-        );
-
-        cardsPanel.setBackground(BACKGROUND);
-
-        cardsPanel.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 150)
-        );
-
-        cardsPanel.setPreferredSize(
-                new Dimension(850, 150)
-        );
-
-        cardsPanel.add(createStatCard(
-                "Total Employees", "0",
-                "All employees", PURPLE
-        ));
-
-        cardsPanel.add(createStatCard(
-                "Full-Time", "0",
-                "Full-time staff", GREEN
-        ));
-
-        cardsPanel.add(createStatCard(
-                "Part-Time", "0",
-                "Part-time staff", new Color(215, 155, 85)
-        ));
-
-        cardsPanel.add(createStatCard(
-                "Departments", "5",
-                "Available departments", new Color(100, 145, 190)
-        ));
-
-        centerPanel.add(cardsPanel);
-
-        centerPanel.add(Box.createVerticalStrut(30));
-
-        // Recent Employees
-        RoundedPanel recentPanel = new RoundedPanel(
-                20, WHITE
-        );
-
-        recentPanel.setLayout(
-                new BorderLayout(0, 20)
-        );
-
-        recentPanel.setBorder(
-                new EmptyBorder(25, 27, 25, 27)
-        );
-
-        recentPanel.setPreferredSize(
-                new Dimension(850, 280)
-        );
-
-        recentPanel.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 280)
-        );
-
-        JPanel recentHeader = new JPanel(
-                new BorderLayout()
-        );
-
-        recentHeader.setBackground(WHITE);
-
-        JLabel recentTitle = new JLabel(
-                "Recent Employees"
-        );
-
-        recentTitle.setFont(new Font(
-                "Segoe UI", Font.BOLD, 18
-        ));
-
-        recentTitle.setForeground(TEXT);
-
-        JLabel recentSubtitle = new JLabel(
-                "Your latest employee records"
-        );
-
-        recentSubtitle.setFont(new Font(
-                "Segoe UI", Font.PLAIN, 12
-        ));
-
-        recentSubtitle.setForeground(MUTED);
-
-        JPanel recentText = new JPanel();
-
-        recentText.setLayout(new BoxLayout(
-                recentText, BoxLayout.Y_AXIS
-        ));
-
-        recentText.setBackground(WHITE);
-
-        recentText.add(recentTitle);
-        recentText.add(Box.createVerticalStrut(5));
-        recentText.add(recentSubtitle);
-
-        recentHeader.add(
-                recentText, BorderLayout.WEST
-        );
-
-        JLabel emptyMessage = new JLabel(
-                "No employees added yet."
-        );
-
-        emptyMessage.setFont(new Font(
-                "Segoe UI", Font.PLAIN, 14
-        ));
-
-        emptyMessage.setForeground(MUTED);
-
-        emptyMessage.setHorizontalAlignment(
-                SwingConstants.CENTER
-        );
-
-        recentPanel.add(
-                recentHeader, BorderLayout.NORTH
-        );
-
-        recentPanel.add(
-                emptyMessage, BorderLayout.CENTER
-        );
-
-        centerPanel.add(recentPanel);
-
-        dashboard.add(centerPanel, BorderLayout.CENTER);
-
-        return dashboard;
-    }
-
-    // ================= STATISTICS CARDS =================
-
-    private JPanel createStatCard(
-            String title,
-            String number,
-            String description,
-            Color accent) {
-
-        RoundedPanel card = new RoundedPanel(
-                18, WHITE
-        );
-
-        card.setLayout(new BoxLayout(
-                card, BoxLayout.Y_AXIS
-        ));
-
-        card.setBorder(
-                new EmptyBorder(20, 18, 18, 18)
-        );
-
-        JLabel titleLabel = new JLabel(title);
-
-        titleLabel.setFont(new Font(
-                "Segoe UI", Font.PLAIN, 12
-        ));
-
-        titleLabel.setForeground(MUTED);
-
-        JLabel numberLabel = new JLabel(number);
-
-        numberLabel.setFont(new Font(
-                "Segoe UI", Font.BOLD, 30
-        ));
-
-        numberLabel.setForeground(accent);
-
-        JLabel descriptionLabel = new JLabel(
-                description
-        );
-
-        descriptionLabel.setFont(new Font(
-                "Segoe UI", Font.PLAIN, 11
-        ));
-
-        descriptionLabel.setForeground(MUTED);
-
-        card.add(titleLabel);
-        card.add(Box.createVerticalStrut(13));
-        card.add(numberLabel);
-        card.add(Box.createVerticalStrut(7));
-        card.add(descriptionLabel);
-
-        return card;
-    }
-
-    // ================= ROUNDED PANEL =================
-
-    private class RoundedPanel extends JPanel {
-
-        private final int radius;
-        private final Color backgroundColor;
-
-        public RoundedPanel(
-                int radius,
-                Color backgroundColor) {
-
-            this.radius = radius;
-            this.backgroundColor = backgroundColor;
-
-            setOpaque(false);
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-
-            Graphics2D g2 = (Graphics2D) g.create();
-
-            g2.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON
-            );
-
-            // Shadow
-            g2.setColor(
-                    new Color(40, 30, 60, 12)
-            );
-
-            g2.fillRoundRect(
-                    2, 4,
-                    getWidth() - 5,
-                    getHeight() - 6,
-                    radius, radius
-            );
-
-            // Background
-            g2.setColor(backgroundColor);
-
-            g2.fillRoundRect(
-                    0, 0,
-                    getWidth() - 5,
-                    getHeight() - 7,
-                    radius, radius
-            );
-
-            g2.dispose();
-
-            super.paintComponent(g);
+    private void highlight(String active) {
+        for (java.util.Map.Entry<String, JButton> entry : navButtons.entrySet()) {
+            boolean isActive = entry.getKey().equals(active);
+            entry.getValue().setBackground(isActive ? LIGHT_PURPLE : WHITE);
+            entry.getValue().setForeground(isActive ? PURPLE : TEXT);
         }
     }
 
-    // ================= MAIN =================
+    // ================= NAVIGATION =================
 
-    public static void main(String[] args) {
+    public void showPanel(String name) {
+        switch (name) {
+            case DASHBOARD -> dashboardPanel.refreshStats();
+            case ADD -> addPanel.refresh();
+            case VIEW -> viewPanel.refreshTable();
+            case SEARCH -> searchPanel.refresh();
+            case UPDATE -> updatePanel.refresh();
+            case DEPARTMENTS -> departmentPanel.refreshTable();
+            default -> { }
+        }
+        cardLayout.show(contentPanel, name);
+        highlight(name);
+    }
 
-        FlatLightLaf.setup();
+    public void refreshAllPanels() {
+        dashboardPanel.refreshStats();
+        addPanel.refresh();
+        viewPanel.refreshTable();
+        searchPanel.refresh();
+        updatePanel.refresh();
+        departmentPanel.refreshTable();
+    }
 
-        SwingUtilities.invokeLater(() -> {
-
-            MainFrame frame = new MainFrame();
-
-            frame.setVisible(true);
-
-        });
+    private void handleLogout() {
+        int choice = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to log out?",
+                "Logout", JOptionPane.YES_NO_OPTION);
+        if (choice == JOptionPane.YES_OPTION) {
+            dispose();
+            new LoginFrame(authService, employeeManager, departmentManager).setVisible(true);
+        }
     }
 }
