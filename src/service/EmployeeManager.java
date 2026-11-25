@@ -1,10 +1,12 @@
+package service;
+
 import java.util.List;
 import java.util.ArrayList;
 import java.io.IOException;
 
 import model.Employee;
 import storage.FileHandler;
-import exceptions.ValidationException;
+import exception.ValidationException;
 
 public class EmployeeManager {
 
@@ -37,8 +39,8 @@ public class EmployeeManager {
         if (employee == null) {
             throw new ValidationException("Employee cannot be null");
         }
-        if (!departmentManager.nameExists(employee.getDepartment())) {
-            throw new ValidationException("Invalid department: " + employee.getDepartment());
+        if (!departmentManager.nameExists(employee.getDepartmentName())) {
+            throw new ValidationException("Invalid department: " + employee.getDepartmentName());
         }
         if (idExists(employee.getId())) {
             throw new ValidationException("Employee ID already exists: " + employee.getId());
@@ -62,8 +64,8 @@ public class EmployeeManager {
         if (updatedEmployee.getId() != id) {
             throw new ValidationException("Updated employee ID does not match the existing employee ID");
         }
-        if (!departmentManager.nameExists(updatedEmployee.getDepartment())) {
-            throw new ValidationException("Invalid department: " + updatedEmployee.getDepartment());
+        if (!departmentManager.nameExists(updatedEmployee.getDepartmentName())) {
+            throw new ValidationException("Invalid department: " + updatedEmployee.getDepartmentName());
         }
         Employee existingEmployee = findById(id);
         if (existingEmployee == null) {
@@ -88,7 +90,7 @@ public class EmployeeManager {
             return results;
         text=text.toLowerCase();
         for(Employee e :employees){
-            String employeeName=e.getName().toLowerCase();
+            String employeeName=e.getFullName().toLowerCase();
             if(employeeName.contains(text))
                 results.add(e);
         }
@@ -100,7 +102,7 @@ public class EmployeeManager {
             return results;
         departmentName=departmentName.toLowerCase();
         for(Employee e:employees){
-            if(e.getDepartment().toLowerCase().contains(departmentName))
+            if(e.getDepartmentName().toLowerCase().contains(departmentName))
                 results.add(e);
         }
         return results;
@@ -127,7 +129,7 @@ public class EmployeeManager {
         if(dept==null||dept.isEmpty())
             return count;
         for(Employee e:employees){
-            if(e.getDepartment().equalsIgnoreCase(dept))
+            if(e.getDepartmentName().equalsIgnoreCase(dept))
                 count++;
         }
         return count;

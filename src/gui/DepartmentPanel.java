@@ -212,7 +212,11 @@ public class DepartmentPanel extends JPanel {
         } catch (ValidationException ex) {
             showError(ex.getMessage());
             return;
-        } catch (IOException ex) {
+        } catch(DuplicateEntryException ex){
+            showError(ex.getMessage());
+            return;
+        }
+        catch (IOException ex) {
             showError("Could not save the department: " + ex.getMessage());
             return;
         }

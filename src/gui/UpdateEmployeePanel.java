@@ -9,6 +9,7 @@ import javax.swing.border.EmptyBorder;
 
 import exception.ValidationException;
 import model.Employee;
+import model.EmployeeTableModel;
 import service.DepartmentManager;
 import service.EmployeeManager;
 
@@ -73,7 +74,7 @@ public class UpdateEmployeePanel extends JPanel {
 
     private void initializeComponents() {
 
-        tableModel = new EmployeeTableModel();
+        tableModel = new EmployeeTableModel(employeeManager);
         employeeTable = new JTable(tableModel);
 
         employeeTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));

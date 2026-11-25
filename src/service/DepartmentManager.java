@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.List;
 
 import storage.FileHandler;
-import exception.ValidationException;
+import exception.*;
 import model.Department;
 
 public class DepartmentManager {
@@ -59,7 +59,8 @@ public class DepartmentManager {
         return false;
     }
 
-    public void addDepartment(int id, String name) throws ValidationException, IOException {
+    public void addDepartment(int id, String name)
+            throws ValidationException, DuplicateEntryException, IOException {
 
         if (id <= 0) {
             throw new ValidationException("Department ID must be positive");
@@ -119,13 +120,13 @@ public class DepartmentManager {
                 new ArrayList<>(departments));
     }
 
-    public List<String> getDepartmentNames() {
+    public String[] getDepartmentNames() {
 
-        List<String> names = new ArrayList<>();
+        String[] names = new String[departments.size()];
 
-        for (Department department : departments) {
+        for (int i = 0; i < departments.size(); i++) {
 
-            names.add(department.getName());
+            names[i] = departments.get(i).getName();
         }
 
         return names;

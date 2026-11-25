@@ -2,7 +2,6 @@ package gui;
 
 import java.awt.*;
 import java.awt.event.ItemEvent;
-import java.util.List;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -203,7 +202,7 @@ public class EmployeeFormPanel extends JPanel {
     }
 
     // Kept for compatibility with existing GUI code.
-    public void reloadDepartments(List<String> departments) {
+    public void reloadDepartments(String [] departments) {
 
         departmentCombo.removeAllItems();
 

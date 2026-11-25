@@ -4,7 +4,6 @@ import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
-import model.*;
 import service.*;
 
 public class DashboardPanel extends JPanel {

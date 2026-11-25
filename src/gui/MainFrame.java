@@ -121,10 +121,7 @@ public class MainFrame extends JFrame {
                 refresh
         );
 
-        searchPanel = new SearchPanel(
-                employeeManager,
-                departmentManager
-        );
+        searchPanel = new SearchPanel(employeeManager);
 
         updatePanel = new UpdateEmployeePanel(
                 employeeManager,

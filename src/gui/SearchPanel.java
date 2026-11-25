@@ -1,8 +1,10 @@
+package gui;
+
 import java.awt.*;
 import javax.swing.*;
 import java.util.List;
-import manager.EmployeeManager;
-import manager.DepartmentManager;
+import service.*;
+import model.*;
 
 public class SearchPanel extends JPanel {
     private EmployeeManager employeeManager;

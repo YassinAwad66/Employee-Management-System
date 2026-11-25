@@ -1,7 +1,9 @@
+package gui;
+
 import java.awt.*;
 import javax.swing.*;
-import manager.EmployeeManager;
-import manager.DepartmentManager;
+import service.*;
+import model.*;
 
 public class ViewEmployeesPanel extends JPanel {
     private JTable employeeTable;

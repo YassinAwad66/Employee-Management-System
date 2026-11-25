@@ -1,6 +1,6 @@
 import javax.swing.*;
 import gui.LoginFrame;
-import model.*;
+
 import service.*;
 import storage.FileHandler;
 
