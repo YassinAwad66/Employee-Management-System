@@ -37,6 +37,8 @@ public class SearchPanel extends JPanel {
         txtSearch.setBorder(BorderFactory.createLineBorder(prpl));
         txtSearch.setCaretColor(prpl);
         txtSearch.setPreferredSize(new Dimension(200, 30));
+        txtSearch.setText("Enter search text ...");
+        
 
         btnSearch = new JButton("Search");
         btnSearch.setBackground(lightprpl);
