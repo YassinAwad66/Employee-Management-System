@@ -65,7 +65,7 @@ public class ViewEmployeesPanel extends JPanel {
         employeeTable.setShowGrid(true);
         
         employeeTable.getTableHeader().setBackground(prpl);
-        employeeTable.getTableHeader().setForeground(Color.WHITE);
+        employeeTable.getTableHeader().setForeground(darkprpl);
         employeeTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 14));
         employeeTable.getTableHeader().setPreferredSize(new Dimension(0, 40));
         employeeTable.setShowGrid(true);
