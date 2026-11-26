@@ -1,564 +1,381 @@
 package gui;
 
+import exception.ValidationException;
 import java.awt.*;
 import java.io.IOException;
 import java.util.List;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-
-import exception.ValidationException;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.table.TableRowSorter;
 import model.Employee;
 import model.EmployeeTableModel;
 import service.DepartmentManager;
 import service.EmployeeManager;
 
+/** Employee update screen. Reuses EmployeeFormPanel and EmployeeManager. */
 public class UpdateEmployeePanel extends JPanel {
-
-    // ================= COLORS =================
 
     private static final Color BG = new Color(246, 245, 250);
     private static final Color WHITE = Color.WHITE;
-    private static final Color PURPLE = new Color(105, 76, 160);
-    private static final Color LIGHT_PURPLE = new Color(239, 234, 248);
+    private static final Color PURPLE = new Color(105, 76, 180);
+    private static final Color SOFT_PURPLE = new Color(239, 234, 248);
     private static final Color TEXT = new Color(45, 42, 55);
-    private static final Color MUTED = new Color(135, 130, 145);
-    private static final Color BORDER = new Color(230, 226, 237);
-
-    // ================= DEPENDENCIES =================
+    private static final Color MUTED = new Color(130, 125, 145);
+    private static final Color BORDER = new Color(228, 225, 238);
 
     private final EmployeeManager employeeManager;
-    private final DepartmentManager departmentManager;
     private final Runnable onDataChanged;
+    private final EmployeeFormPanel employeeForm;
+    private final EmployeeTableModel tableModel;
+    private final JTable employeeTable;
+    private final JLabel selectedLabel = new JLabel("No employee selected");
+    private final JLabel countLabel = new JLabel("Select a row to edit");
+    private final JButton saveButton = button("Save Changes", true);
+    private final TableRowSorter<EmployeeTableModel> sorter;
+    private final JTextField searchField = new JTextField();
 
-    // ================= COMPONENTS =================
-
-    private JTable employeeTable;
-    private EmployeeTableModel tableModel;
-
-    private EmployeeFormPanel employeeForm;
-
-    private JButton updateButton;
-    private JButton clearButton;
-    private JButton refreshButton;
-
-    private JLabel selectedEmployeeLabel;
-
-    // ================= CONSTRUCTOR =================
-
-    public UpdateEmployeePanel(
-            EmployeeManager employeeManager,
-            DepartmentManager departmentManager,
-            Runnable onDataChanged) {
-
-        if (employeeManager == null || departmentManager == null) {
+    public UpdateEmployeePanel(EmployeeManager em, DepartmentManager dm, Runnable onChanged) {
+        if (em == null || dm == null) {
             throw new IllegalArgumentException("Managers cannot be null.");
         }
-
-        this.employeeManager = employeeManager;
-        this.departmentManager = departmentManager;
-        this.onDataChanged = onDataChanged;
+        employeeManager = em;
+        onDataChanged = onChanged;
+        employeeForm = new EmployeeFormPanel(dm, true);
+        employeeForm.setIdEditable(false);
+        tableModel = new EmployeeTableModel(em);
+        employeeTable = new JTable(tableModel);
+        sorter = new TableRowSorter<>(tableModel);
+        employeeTable.setRowSorter(sorter);
+        saveButton.setEnabled(false);
 
         setLayout(new BorderLayout(0, 18));
         setBackground(BG);
-        setBorder(new EmptyBorder(5, 5, 5, 5));
-
-        initializeComponents();
+        setBorder(new EmptyBorder(20, 22, 20, 22));
         buildLayout();
-        setupListeners();
-
         refresh();
     }
 
-    // ================= INITIALIZATION =================
+    private void buildLayout() {
+        JPanel heading = new JPanel(new BorderLayout(0, 5));
+        heading.setOpaque(false);
+        JLabel title = new JLabel("Update Employee");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 26));
+        title.setForeground(TEXT);
+        JLabel subtitle = new JLabel("Choose an employee, edit the details, then save your changes.");
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        subtitle.setForeground(MUTED);
+        heading.add(title, BorderLayout.NORTH);
+        heading.add(subtitle, BorderLayout.SOUTH);
+        add(heading, BorderLayout.NORTH);
 
-    private void initializeComponents() {
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
+                buildTableCard(), buildEditorCard());
+        split.setBorder(null);
+        split.setOpaque(false);
+        split.setDividerSize(14);
+        split.setResizeWeight(0.36);
+        split.setContinuousLayout(true);
+        add(split, BorderLayout.CENTER);
+        SwingUtilities.invokeLater(() -> split.setDividerLocation(0.36));
+    }
 
-        tableModel = new EmployeeTableModel(employeeManager);
-        employeeTable = new JTable(tableModel);
+    private JPanel buildTableCard() {
+        JPanel card = card();
+        card.setLayout(new BorderLayout(0, 14));
+        card.setMinimumSize(new Dimension(250, 200));
+
+        JPanel header = new JPanel(new BorderLayout(0, 12));
+        header.setOpaque(false);
+        JPanel titleRow = new JPanel(new BorderLayout(8, 0));
+        titleRow.setOpaque(false);
+        JLabel label = new JLabel("Employee Directory");
+        label.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        label.setForeground(TEXT);
+        JButton refreshButton = button("Refresh", false);
+        refreshButton.addActionListener(e -> refresh());
+        titleRow.add(label, BorderLayout.CENTER);
+        titleRow.add(refreshButton, BorderLayout.EAST);
+
+        searchField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        searchField.setToolTipText("Search for an employee by name, ID or department");
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER), new EmptyBorder(10, 12, 10, 12)));
+        searchField.putClientProperty("JTextField.placeholderText", "Search employees...");
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { filterRows(); }
+            public void removeUpdate(DocumentEvent e) { filterRows(); }
+            public void changedUpdate(DocumentEvent e) { filterRows(); }
+        });
+        header.add(titleRow, BorderLayout.NORTH);
+        header.add(searchField, BorderLayout.SOUTH);
+        card.add(header, BorderLayout.NORTH);
 
         employeeTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        employeeTable.setRowHeight(32);
-        employeeTable.setSelectionMode(
-                ListSelectionModel.SINGLE_SELECTION);
-
+        employeeTable.setRowHeight(40);
+        employeeTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         employeeTable.setShowGrid(false);
         employeeTable.setIntercellSpacing(new Dimension(0, 0));
         employeeTable.setFillsViewportHeight(true);
-
         employeeTable.setBackground(WHITE);
         employeeTable.setForeground(TEXT);
-
-        employeeTable.setSelectionBackground(LIGHT_PURPLE);
+        employeeTable.setSelectionBackground(SOFT_PURPLE);
         employeeTable.setSelectionForeground(TEXT);
-
-        employeeTable.getTableHeader().setFont(
-                new Font("Segoe UI", Font.BOLD, 12));
-
-        employeeTable.getTableHeader().setBackground(LIGHT_PURPLE);
+        employeeTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        employeeTable.getTableHeader().setBackground(SOFT_PURPLE);
         employeeTable.getTableHeader().setForeground(PURPLE);
-        employeeTable.getTableHeader().setPreferredSize(
-                new Dimension(0, 35));
+        employeeTable.getTableHeader().setPreferredSize(new Dimension(0, 40));
+        // Keep the directory compact: ID, Name and Department only.
+        // The full employee details remain available in the editor.
+        if (employeeTable.getColumnCount() >= 5) {
+            employeeTable.removeColumn(employeeTable.getColumnModel().getColumn(4));
+            employeeTable.removeColumn(employeeTable.getColumnModel().getColumn(2));
+        }
+        employeeTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) loadSelection();
+        });
 
-        employeeTable.setAutoCreateRowSorter(true);
+        JScrollPane scroll = new JScrollPane(employeeTable);
+        scroll.setBorder(BorderFactory.createLineBorder(BORDER));
+        scroll.getViewport().setBackground(WHITE);
+        card.add(scroll, BorderLayout.CENTER);
 
-        employeeForm = new EmployeeFormPanel(departmentManager);
-        employeeForm.setIdEditable(false);
-
-        updateButton = createButton(
-                "Update Employee", PURPLE, WHITE);
-
-        clearButton = createButton(
-                "Clear Form", WHITE, PURPLE);
-
-        refreshButton = createButton(
-                "Refresh Table", WHITE, PURPLE);
-
-        selectedEmployeeLabel = new JLabel(
-                "No employee selected");
-
-        selectedEmployeeLabel.setFont(
-                new Font("Segoe UI", Font.BOLD, 12));
-
-        selectedEmployeeLabel.setForeground(MUTED);
+        countLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        countLabel.setForeground(MUTED);
+        card.add(countLabel, BorderLayout.SOUTH);
+        return card;
     }
 
-    // ================= LAYOUT =================
-
-    private void buildLayout() {
-
-        JPanel topPanel = buildTableSection();
-        JPanel formSection = buildFormSection();
-
-        add(topPanel, BorderLayout.NORTH);
-        add(formSection, BorderLayout.CENTER);
+    private void filterRows() {
+        String query = searchField.getText().trim();
+        if (query.isEmpty()) {
+            sorter.setRowFilter(null);
+        } else {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(query)));
+        }
+        updateCount();
     }
 
-    // ================= TABLE SECTION =================
-
-    private JPanel buildTableSection() {
-
-        JPanel section = new JPanel(new BorderLayout(0, 12));
-        section.setBackground(WHITE);
-
-        section.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(BORDER),
-                        new EmptyBorder(16, 16, 16, 16)
-                )
-        );
-
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(WHITE);
-
-        JLabel title = new JLabel(
-                "Select Employee to Update");
-
-        title.setFont(
-                new Font("Segoe UI", Font.BOLD, 17));
-
-        title.setForeground(TEXT);
-
-        JLabel subtitle = new JLabel(
-                "Select an employee from the table to load their information.");
-
-        subtitle.setFont(
-                new Font("Segoe UI", Font.PLAIN, 11));
-
-        subtitle.setForeground(MUTED);
-
-        JPanel titlePanel = new JPanel();
-        titlePanel.setLayout(
-                new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
-
-        titlePanel.setBackground(WHITE);
-
-        titlePanel.add(title);
-        titlePanel.add(Box.createVerticalStrut(5));
-        titlePanel.add(subtitle);
-
-        header.add(titlePanel, BorderLayout.WEST);
-        header.add(refreshButton, BorderLayout.EAST);
-
-        JScrollPane scrollPane = new JScrollPane(employeeTable);
-
-        scrollPane.setBorder(
-                BorderFactory.createLineBorder(BORDER));
-
-        scrollPane.setPreferredSize(
-                new Dimension(0, 190));
-
-        scrollPane.getViewport().setBackground(WHITE);
-
-        section.add(header, BorderLayout.NORTH);
-        section.add(scrollPane, BorderLayout.CENTER);
-
-        return section;
+    private void updateCount() {
+        countLabel.setText(employeeTable.getRowCount() + " employees shown");
     }
 
-    // ================= FORM SECTION =================
+    private JPanel buildEditorCard() {
+        JPanel card = card();
+        card.setLayout(new BorderLayout(0, 12));
 
-    private JPanel buildFormSection() {
+        JPanel header = new JPanel(new GridLayout(2, 1, 0, 6));
+        header.setOpaque(false);
+        JLabel label = new JLabel("Edit Employee Profile");
+        label.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        label.setForeground(TEXT);
+        selectedLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        selectedLabel.setForeground(MUTED);
+        header.add(label);
+        header.add(selectedLabel);
+        card.add(header, BorderLayout.NORTH);
 
-        JPanel section = new JPanel(
-                new BorderLayout(0, 15));
+        JScrollPane scroll = new JScrollPane(employeeForm);
+        scroll.setBorder(null);
+        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.getViewport().setBackground(BG);
+        scroll.getVerticalScrollBar().setUnitIncrement(14);
+        card.add(scroll, BorderLayout.CENTER);
 
-        section.setBackground(WHITE);
-
-        section.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(BORDER),
-                        new EmptyBorder(16, 16, 16, 16)
-                )
-        );
-
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(WHITE);
-
-        JLabel title = new JLabel(
-                "Employee Information");
-
-        title.setFont(
-                new Font("Segoe UI", Font.BOLD, 17));
-
-        title.setForeground(TEXT);
-
-        JPanel titlePanel = new JPanel(new BorderLayout());
-        titlePanel.setBackground(WHITE);
-
-        titlePanel.add(title, BorderLayout.NORTH);
-        titlePanel.add(selectedEmployeeLabel, BorderLayout.SOUTH);
-
-        header.add(titlePanel, BorderLayout.WEST);
-
-        JScrollPane formScrollPane = new JScrollPane(employeeForm);
-
-        formScrollPane.setBorder(null);
-
-        formScrollPane.setHorizontalScrollBarPolicy(
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        formScrollPane.getViewport().setBackground(BG);
-
-        JPanel buttonPanel = new JPanel(
-                new FlowLayout(FlowLayout.RIGHT, 10, 0));
-
-        buttonPanel.setBackground(WHITE);
-
-        buttonPanel.add(clearButton);
-        buttonPanel.add(updateButton);
-
-        section.add(header, BorderLayout.NORTH);
-        section.add(formScrollPane, BorderLayout.CENTER);
-        section.add(buttonPanel, BorderLayout.SOUTH);
-
-        return section;
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        actions.setOpaque(false);
+        JButton clearButton = button("Clear", false);
+        clearButton.addActionListener(e -> clearSelection());
+        saveButton.addActionListener(e -> handleUpdate());
+        actions.add(clearButton);
+        actions.add(saveButton);
+        card.add(actions, BorderLayout.SOUTH);
+        return card;
     }
 
-    // ================= BUTTON CREATION =================
+    private JPanel card() {
+        JPanel panel = new JPanel();
+        panel.setBackground(WHITE);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER),
+                new EmptyBorder(18, 18, 18, 18)));
+        return panel;
+    }
 
-    private JButton createButton(
-            String text,
-            Color background,
-            Color foreground) {
-
-        JButton button = new JButton(text);
-
-        button.setFont(
-                new Font("Segoe UI", Font.BOLD, 12));
-
-        button.setForeground(foreground);
-        button.setBackground(background);
-
+    private JButton button(String title, boolean primary) {
+        JButton button = new JButton(title);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        button.setForeground(primary ? WHITE : PURPLE);
+        button.setBackground(primary ? PURPLE : SOFT_PURPLE);
         button.setFocusPainted(false);
         button.setBorderPainted(false);
         button.setOpaque(true);
-
-        button.setBorder(
-                new EmptyBorder(11, 18, 11, 18));
-
-        button.setCursor(
-                new Cursor(Cursor.HAND_CURSOR));
-
+        button.setBorder(new EmptyBorder(11, 17, 11, 17));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return button;
     }
 
-    // ================= LISTENERS =================
-
-    private void setupListeners() {
-
-        employeeTable.getSelectionModel()
-                .addListSelectionListener(event -> {
-
-                    if (!event.getValueIsAdjusting()) {
-                        handleRowSelection();
-                    }
-                });
-
-        updateButton.addActionListener(
-                event -> handleUpdate());
-
-        clearButton.addActionListener(
-                event -> clearForm());
-
-        refreshButton.addActionListener(
-                event -> refresh());
-    }
-
-    // ================= ROW SELECTION =================
-
-    private void handleRowSelection() {
-
-        int selectedRow = employeeTable.getSelectedRow();
-
-        if (selectedRow == -1) {
-            resetFormState();
+    private void loadSelection() {
+        int viewRow = employeeTable.getSelectedRow();
+        if (viewRow < 0) {
+            resetForm();
             return;
         }
-
-        int modelRow = employeeTable.convertRowIndexToModel(
-                selectedRow);
-
-        Employee selected = tableModel.getEmployeeAt(modelRow);
-
-        if (selected == null) {
-            showEmployeeNotFound();
-            clearForm();
-            return;
-        }
-
-        Employee employee = employeeManager.findById(
-                selected.getId());
-
+        int modelRow = employeeTable.convertRowIndexToModel(viewRow);
+        Employee rowEmployee = tableModel.getEmployeeAt(modelRow);
+        Employee employee = rowEmployee == null ? null : employeeManager.findById(rowEmployee.getId());
         if (employee == null) {
-            showEmployeeNotFound();
-            refresh();
+            JOptionPane.showMessageDialog(this, "Employee not found.", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            clearSelection();
             return;
         }
-
         employeeForm.loadEmployee(employee);
         employeeForm.setIdEditable(false);
-
-        selectedEmployeeLabel.setText(
-                "Editing Employee ID: " + employee.getId());
-
-        selectedEmployeeLabel.setForeground(PURPLE);
+        selectedLabel.setText("Editing: " + employee.getFullName() + "  |  ID: " + employee.getId());
+        selectedLabel.setForeground(PURPLE);
+        saveButton.setEnabled(true);
     }
 
-    // ================= UPDATE EMPLOYEE =================
-
     private void handleUpdate() {
-
-        int selectedRow = employeeTable.getSelectedRow();
-
-        if (selectedRow == -1) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Please select an employee from the table first.",
-                    "No Employee Selected",
-                    JOptionPane.WARNING_MESSAGE
-            );
-
+        int viewRow = employeeTable.getSelectedRow();
+        if (viewRow < 0) {
+            JOptionPane.showMessageDialog(this, "Select an employee first.",
+                    "No Employee Selected", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
-        int modelRow = employeeTable.convertRowIndexToModel(
-                selectedRow);
-
-        Employee selected = tableModel.getEmployeeAt(modelRow);
-
-        if (selected == null) {
-
-            showEmployeeNotFound();
-            return;
-        }
-
-        int employeeId = selected.getId();
-
-        Employee existingEmployee = employeeManager.findById(
-                employeeId);
-
-        if (existingEmployee == null) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "The selected employee no longer exists.",
-                    "Employee Not Found",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
+        int modelRow = employeeTable.convertRowIndexToModel(viewRow);
+        Employee rowEmployee = tableModel.getEmployeeAt(modelRow);
+        if (rowEmployee == null) return;
+        int id = rowEmployee.getId();
+        Employee existing = employeeManager.findById(id);
+        if (existing == null) {
+            JOptionPane.showMessageDialog(this, "The employee no longer exists.",
+                    "Not Found", JOptionPane.ERROR_MESSAGE);
             refresh();
             return;
         }
 
         try {
-
-            Employee updatedEmployee =
-                    employeeForm.buildEmployee();
-
-            // Employee ID must remain unchanged
-            if (updatedEmployee.getId() != employeeId) {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Employee ID cannot be changed.",
-                        "Invalid ID",
-                        JOptionPane.ERROR_MESSAGE
-                );
-
+            Employee updated = employeeForm.buildEmployee();
+            if (updated.getId() != id) {
+                JOptionPane.showMessageDialog(this, "Employee ID cannot be changed.",
+                        "Invalid ID", JOptionPane.ERROR_MESSAGE);
                 return;
             }
+            if (!showUpdateDialog("Confirm Update",
+                    "Save changes to " + existing.getFullName() + "?", true)) return;
 
-            // Confirmation before updating
-            int choice = JOptionPane.showConfirmDialog(
-                    this,
-                    "Are you sure you want to update employee "
-                            + existingEmployee.getFullName() + "?",
-                    "Confirm Update",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE
-            );
-
-            if (choice != JOptionPane.YES_OPTION) {
-                return;
+            employeeManager.updateEmployee(id, updated);
+            if (onDataChanged != null) onDataChanged.run();
+            refreshTable();
+            selectEmployeeById(id);
+            // Explicitly reload, even if the selection did not change.
+            Employee saved = employeeManager.findById(id);
+            if (saved != null) {
+                employeeForm.loadEmployee(saved);
+                selectedLabel.setText("Editing: " + saved.getFullName() + "  |  ID: " + id);
+                selectedLabel.setForeground(PURPLE);
             }
-
-            // Update employee data
-            employeeManager.updateEmployee(
-                    employeeId, updatedEmployee);
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Employee updated successfully!",
-                    "Success",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-
-            // Notify MainFrame or refresh locally
-            if (onDataChanged != null) {
-                onDataChanged.run();
-            } else {
-                refreshTable();
-            }
-
-            // Keep the updated employee selected
-            selectEmployeeById(employeeId);
-
+            showUpdateDialog("Update Successful",
+                    "Employee updated successfully!", false);
         } catch (ValidationException ex) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    ex.getMessage(),
-                    "Validation Error",
-                    JOptionPane.WARNING_MESSAGE
-            );
-
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                    "Validation Error", JOptionPane.WARNING_MESSAGE);
         } catch (IOException ex) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Failed to save employee data.\n"
-                            + ex.getMessage(),
-                    "File Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
+            JOptionPane.showMessageDialog(this, "Could not save changes: " + ex.getMessage(),
+                    "File Error", JOptionPane.ERROR_MESSAGE);
         } catch (RuntimeException ex) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "An unexpected error occurred.\n"
-                            + ex.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
+            JOptionPane.showMessageDialog(this, "Unexpected error: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // ================= SELECT EMPLOYEE BY ID =================
+    // Reusable purple dialog for confirmation and success.
+    private boolean showUpdateDialog(String title, String message, boolean confirm) {
+        JDialog dialog = new JDialog(
+                SwingUtilities.getWindowAncestor(this), Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setUndecorated(true);
 
-    private void selectEmployeeById(int employeeId) {
+        JPanel content = new JPanel(new BorderLayout(0, 20));
+        content.setBackground(WHITE);
+        content.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER, 2),
+                new EmptyBorder(25, 30, 25, 30)));
 
-        for (int row = 0;
-             row < tableModel.getRowCount();
-             row++) {
+        JLabel heading = new JLabel(title);
+        heading.setFont(new Font("Segoe UI", Font.BOLD, 21));
+        heading.setForeground(PURPLE);
 
-            Employee employee =
-                    tableModel.getEmployeeAt(row);
+        JLabel description = new JLabel(message);
+        description.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        description.setForeground(TEXT);
 
-            if (employee != null
-                    && employee.getId() == employeeId) {
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        actions.setOpaque(false);
+        final boolean[] accepted = {false};
 
-                int viewRow =
-                        employeeTable.convertRowIndexToView(row);
+        if (confirm) {
+            JButton cancel = button("Cancel", false);
+            cancel.addActionListener(e -> dialog.dispose());
+            actions.add(cancel);
+        }
 
+        JButton primary = button(confirm ? "Save Changes" : "Done", true);
+        primary.addActionListener(e -> {
+            accepted[0] = true;
+            dialog.dispose();
+        });
+        actions.add(primary);
+
+        content.add(heading, BorderLayout.NORTH);
+        content.add(description, BorderLayout.CENTER);
+        content.add(actions, BorderLayout.SOUTH);
+
+        dialog.setContentPane(content);
+        dialog.setSize(410, 190);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+        return accepted[0];
+    }
+
+    private void selectEmployeeById(int id) {
+        for (int row = 0; row < tableModel.getRowCount(); row++) {
+            Employee employee = tableModel.getEmployeeAt(row);
+            if (employee != null && employee.getId() == id) {
+                int viewRow = employeeTable.convertRowIndexToView(row);
                 if (viewRow >= 0) {
-
-                    employeeTable.setRowSelectionInterval(
-                            viewRow, viewRow);
-
-                    employeeTable.scrollRectToVisible(
-                            employeeTable.getCellRect(
-                                    viewRow, 0, true));
+                    employeeTable.setRowSelectionInterval(viewRow, viewRow);
+                    employeeTable.scrollRectToVisible(employeeTable.getCellRect(viewRow, 0, true));
                 }
-
                 return;
             }
         }
     }
 
-    // ================= CLEAR FORM =================
-
-    private void clearForm() {
-
-        employeeTable.clearSelection();
-        resetFormState();
-    }
-
-    // ================= RESET FORM STATE =================
-
-    private void resetFormState() {
-
+    private void resetForm() {
         employeeForm.clearForm();
         employeeForm.setIdEditable(false);
-
-        selectedEmployeeLabel.setText(
-                "No employee selected");
-
-        selectedEmployeeLabel.setForeground(MUTED);
+        selectedLabel.setText("Select an employee to start editing");
+        selectedLabel.setForeground(MUTED);
+        saveButton.setEnabled(false);
     }
 
-    // ================= REFRESH =================
+    private void clearSelection() {
+        employeeTable.clearSelection();
+        resetForm();
+    }
 
     public void refresh() {
-
         refreshTable();
-
         employeeForm.reloadDepartments();
-
-        resetFormState();
+        clearSelection();
     }
-
-    // ================= REFRESH TABLE =================
 
     private void refreshTable() {
-
-        List<Employee> employees =
-                employeeManager.getAllEmployees();
-
+        List<Employee> employees = employeeManager.getAllEmployees();
         tableModel.setEmployees(employees);
-    }
-
-    // ================= ERROR MESSAGE =================
-
-    private void showEmployeeNotFound() {
-
-        JOptionPane.showMessageDialog(
-                this,
-                "Employee not found.",
-                "Error",
-                JOptionPane.ERROR_MESSAGE
-        );
+        updateCount();
     }
 }

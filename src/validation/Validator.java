@@ -85,12 +85,20 @@ public final class Validator {
         return type;
     }
 
-    public static String requireValidDepartment(String name, DepartmentManager dm) throws ValidationException {
+   public static String requireValidDepartment(
+        String name,
+        DepartmentManager dm) throws ValidationException {
 
-        if (name == null || !dm.nameExists(name)) {
-            throw new ValidationException("Please select a valid department.");
-        }
-
-        return name;
+    if (dm == null) {
+        throw new ValidationException("Department manager is not available.");
     }
+
+    String cleanName = requireNotEmpty(name, "Department");
+
+    if (!dm.nameExists(cleanName)) {
+        throw new ValidationException("Please select a valid department.");
+    }
+
+    return cleanName;
+}
 }
