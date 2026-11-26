@@ -42,8 +42,24 @@ public class AddEmployeePanel extends JPanel {
         clearButton = new JButton("Clear");
 
         // Style buttons
-        addButton.setBackground(new Color(0,0,0));
+        addButton.setBackground(new Color(105, 76, 160));
         addButton.setForeground(Color.WHITE);
+        addButton.setFocusPainted(false);
+        addButton.setBorderPainted(false);
+        addButton.setContentAreaFilled(false);
+        addButton.setOpaque(false);
+        addButton.setBorder(BorderFactory.createEmptyBorder(11, 18, 11, 18));
+        addButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        addButton.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
+            @Override
+            public void paint(Graphics g, JComponent c) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setColor(c.getBackground());
+                g2.fillRoundRect(0, 0, c.getWidth(), c.getHeight(), 12, 12);
+                g2.dispose();
+                super.paint(g, c);
+            }
+        });
 
         clearButton.setBackground(Color.WHITE);
 
