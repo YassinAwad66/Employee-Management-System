@@ -15,8 +15,7 @@ public class AuthService {
 
         boolean validUsername = USERNAME.equals(username.trim());
 
-        boolean validPassword =
-                Arrays.equals(PASSWORD.toCharArray(), password);
+        boolean validPassword = Arrays.equals(PASSWORD.toCharArray(), password);
 
         return validUsername && validPassword;
     }
