@@ -6,6 +6,7 @@ import java.util.List;
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import model.*;
@@ -29,16 +30,18 @@ public class DepartmentPanel extends JPanel {
     private static final Font LABEL_FONT = new Font("Segoe UI", Font.BOLD, 13);
     private static final Font INPUT_FONT = new Font("Segoe UI", Font.PLAIN, 14);
 
+    private static final int ROW_HEIGHT = 38;
+
     private final JTextField txtDeptId = createTextField();
     private final JTextField txtDeptName = createTextField();
-    private final JTable departmentTable = new JTable();
     private final DefaultTableModel tableModel = new DefaultTableModel(
-            new String[]{"ID", "Department Name", "Employees"}, 0) {
+            new String[] { "ID", "Department Name", "Employees" }, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
         }
     };
+    private final JTable departmentTable = new JTable(tableModel);
     private final JButton btnAdd = new JButton("Add Department");
     private final JButton btnDelete = new JButton("Delete Selected");
 
@@ -52,20 +55,24 @@ public class DepartmentPanel extends JPanel {
         this.onDepartmentsChanged = onChanged;
 
         setLayout(new BorderLayout());
-        setBackground(BG);
-        setBorder(new EmptyBorder(30, 35, 30, 35));
 
-        JPanel mainContent = new JPanel();
-        mainContent.setLayout(new BoxLayout(mainContent, BoxLayout.Y_AXIS));
-        mainContent.setBackground(BG);
+        JPanel top = new JPanel(new BorderLayout(0, 18));
+        top.setBackground(BG);
+        top.add(createHeader(), BorderLayout.NORTH);
+        top.add(createAddSection(), BorderLayout.CENTER);
 
-        mainContent.add(createHeader());
-        mainContent.add(Box.createVerticalStrut(25));
-        mainContent.add(createAddSection());
-        mainContent.add(Box.createVerticalStrut(18));
+        JPanel page = new ScrollablePage();
+        page.setLayout(new BorderLayout(0, 18));
+        page.setBackground(BG);
+        page.setBorder(new EmptyBorder(20, 35, 20, 35));
+        page.add(top, BorderLayout.NORTH);
+        page.add(createTableSection(), BorderLayout.CENTER);
 
-        add(mainContent, BorderLayout.NORTH);
-        add(createTableSection(), BorderLayout.CENTER);
+        // The page scrolls when the window is too short, so the table is never squeezed
+        JScrollPane pageScroll = new JScrollPane(page);
+        pageScroll.setBorder(null);
+        pageScroll.getVerticalScrollBar().setUnitIncrement(16);
+        add(pageScroll, BorderLayout.CENTER);
 
         btnAdd.addActionListener(e -> handleAdd());
         btnDelete.addActionListener(e -> handleDelete());
@@ -76,7 +83,7 @@ public class DepartmentPanel extends JPanel {
     // ================= HEADER =================
 
     private JPanel createHeader() {
-        JPanel header = new JPanel(new BorderLayout());
+        JPanel header = new JPanel(new GridLayout(0, 1, 0, 5));
         header.setBackground(BG);
 
         JLabel title = new JLabel("Departments");
@@ -87,18 +94,8 @@ public class DepartmentPanel extends JPanel {
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         subtitle.setForeground(MUTED);
 
-        JPanel textPanel = new JPanel();
-        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
-        textPanel.setBackground(BG);
-
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
-        subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        textPanel.add(title);
-        textPanel.add(Box.createVerticalStrut(7));
-        textPanel.add(subtitle);
-
-        header.add(textPanel, BorderLayout.WEST);
+        header.add(title);
+        header.add(subtitle);
         return header;
     }
 
@@ -107,20 +104,17 @@ public class DepartmentPanel extends JPanel {
     private JPanel createAddSection() {
         JPanel card = createCard("01", "New Department", "Department ID and unique name");
 
-        JPanel grid = new JPanel(new GridLayout(0, 2, 25, 20));
+        JPanel grid = new JPanel(new GridLayout(1, 2, 25, 0));
         grid.setBackground(WHITE);
         grid.add(createFieldGroup("Department ID", txtDeptId));
         grid.add(createFieldGroup("Department Name", txtDeptName));
 
         styleButton(btnAdd, true);
-        JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        buttonRow.setBackground(WHITE);
-        buttonRow.add(btnAdd);
 
-        JPanel body = new JPanel(new BorderLayout(0, 20));
+        JPanel body = new JPanel(new BorderLayout(0, 16));
         body.setBackground(WHITE);
         body.add(grid, BorderLayout.CENTER);
-        body.add(buttonRow, BorderLayout.SOUTH);
+        body.add(createButtonRow(btnAdd), BorderLayout.SOUTH);
 
         card.add(body, BorderLayout.CENTER);
         return card;
@@ -131,35 +125,43 @@ public class DepartmentPanel extends JPanel {
     private JPanel createTableSection() {
         JPanel card = createCard("02", "All Departments", "Select a row to delete it");
 
-        departmentTable.setModel(tableModel);
         departmentTable.setFont(INPUT_FONT);
         departmentTable.setForeground(TEXT);
-        departmentTable.setRowHeight(38);
+        departmentTable.setRowHeight(ROW_HEIGHT);
+        departmentTable.setFillsViewportHeight(true);
         departmentTable.setShowVerticalLines(false);
         departmentTable.setGridColor(BORDER);
         departmentTable.setSelectionBackground(LIGHT_PURPLE);
         departmentTable.setSelectionForeground(PURPLE);
         departmentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+        departmentTable.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
 
         JTableHeader tableHeader = departmentTable.getTableHeader();
-        tableHeader.setFont(LABEL_FONT);
-        tableHeader.setForeground(PURPLE);
-        tableHeader.setBackground(LIGHT_PURPLE);
-        tableHeader.setPreferredSize(new Dimension(0, 38));
+        tableHeader.setPreferredSize(new Dimension(0, ROW_HEIGHT));
+        DefaultTableCellRenderer headerRenderer = new DefaultTableCellRenderer();
+        headerRenderer.setForeground(PURPLE);
+        headerRenderer.setBackground(LIGHT_PURPLE);
+        tableHeader.setDefaultRenderer(headerRenderer);
+        DefaultTableCellRenderer idHeaderRenderer = new DefaultTableCellRenderer();
+        idHeaderRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+        idHeaderRenderer.setForeground(PURPLE);
+        idHeaderRenderer.setBackground(LIGHT_PURPLE);
+        departmentTable.getColumnModel().getColumn(0).setHeaderRenderer(idHeaderRenderer);
 
         JScrollPane scroll = new JScrollPane(departmentTable);
         scroll.setBorder(BorderFactory.createLineBorder(BORDER));
         scroll.getViewport().setBackground(WHITE);
+        // Header + 5 rows (+2 for the border)
+        scroll.setPreferredSize(new Dimension(700, 6 * ROW_HEIGHT + 2));
 
         styleButton(btnDelete, false);
-        JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        buttonRow.setBackground(WHITE);
-        buttonRow.add(btnDelete);
 
-        JPanel body = new JPanel(new BorderLayout(0, 20));
+        JPanel body = new JPanel(new BorderLayout(0, 16));
         body.setBackground(WHITE);
         body.add(scroll, BorderLayout.CENTER);
-        body.add(buttonRow, BorderLayout.SOUTH);
+        body.add(createButtonRow(btnDelete), BorderLayout.SOUTH);
 
         card.add(body, BorderLayout.CENTER);
         return card;
@@ -168,13 +170,23 @@ public class DepartmentPanel extends JPanel {
     // ================= BEHAVIOR =================
 
     public void refreshTable() {
-        tableModel.setRowCount(0);
         List<Department> list = departmentManager.getAllDepartments();
+        if (list.isEmpty()) {
+            try {
+                departmentManager.loadFromFile();
+                list = departmentManager.getAllDepartments();
+            } catch (IOException ex) {
+                showError("Could not load departments: " + ex.getMessage());
+                return;
+            }
+        }
+
+        tableModel.setRowCount(0);
         for (Department d : list) {
-            tableModel.addRow(new Object[]{
-                d.getId(),
-                d.getName(),
-                employeeManager.countByDepartment(d.getName())
+            tableModel.addRow(new Object[] {
+                    d.getId(),
+                    d.getName(),
+                    employeeManager.countByDepartment(d.getName())
             });
         }
         if (txtDeptId.getText().trim().isEmpty()) {
@@ -212,11 +224,10 @@ public class DepartmentPanel extends JPanel {
         } catch (DuplicateEntryException ex) {
             showError(ex.getMessage());
             return;
-        } catch(ValidationException ex){
+        } catch (ValidationException ex) {
             showError(ex.getMessage());
             return;
-        }
-        catch (IOException ex) {
+        } catch (IOException ex) {
             showError("Could not save the department: " + ex.getMessage());
             return;
         }
@@ -226,11 +237,7 @@ public class DepartmentPanel extends JPanel {
 
         txtDeptId.setText("");
         txtDeptName.setText("");
-        if (onDepartmentsChanged != null) {
-            onDepartmentsChanged.run();
-        } else {
-            refreshTable();
-        }
+        notifyChanged();
     }
 
     private void handleDelete() {
@@ -262,10 +269,13 @@ public class DepartmentPanel extends JPanel {
             return;
         }
 
+        notifyChanged();
+    }
+
+    private void notifyChanged() {
+        refreshTable();
         if (onDepartmentsChanged != null) {
             onDepartmentsChanged.run();
-        } else {
-            refreshTable();
         }
     }
 
@@ -276,26 +286,23 @@ public class DepartmentPanel extends JPanel {
     // ================= CARD DESIGN =================
 
     private JPanel createCard(String number, String title, String description) {
-        JPanel card = new JPanel(new BorderLayout(0, 22));
+        JPanel card = new JPanel(new BorderLayout(0, 16));
         card.setBackground(WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
                 new RoundedBorder(BORDER, 16),
-                new EmptyBorder(22, 25, 25, 25)
-        ));
+                new EmptyBorder(16, 25, 18, 25)));
 
         JPanel heading = new JPanel(new BorderLayout(14, 0));
         heading.setBackground(WHITE);
 
-        JLabel numberLabel = new JLabel(number);
+        JLabel numberLabel = new JLabel(number, SwingConstants.CENTER);
         numberLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
         numberLabel.setForeground(PURPLE);
-        numberLabel.setHorizontalAlignment(SwingConstants.CENTER);
         numberLabel.setOpaque(true);
         numberLabel.setBackground(LIGHT_PURPLE);
         numberLabel.setPreferredSize(new Dimension(38, 38));
 
-        JPanel titlePanel = new JPanel();
-        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
+        JPanel titlePanel = new JPanel(new GridLayout(0, 1, 0, 2));
         titlePanel.setBackground(WHITE);
 
         JLabel titleLabel = new JLabel(title);
@@ -307,7 +314,6 @@ public class DepartmentPanel extends JPanel {
         descriptionLabel.setForeground(MUTED);
 
         titlePanel.add(titleLabel);
-        titlePanel.add(Box.createVerticalStrut(4));
         titlePanel.add(descriptionLabel);
 
         heading.add(numberLabel, BorderLayout.WEST);
@@ -318,7 +324,7 @@ public class DepartmentPanel extends JPanel {
     }
 
     private JPanel createFieldGroup(String labelText, JComponent input) {
-        JPanel group = new JPanel(new BorderLayout(0, 9));
+        JPanel group = new JPanel(new BorderLayout(0, 7));
         group.setBackground(WHITE);
 
         JLabel label = new JLabel(labelText);
@@ -330,29 +336,27 @@ public class DepartmentPanel extends JPanel {
         return group;
     }
 
+    private JPanel createButtonRow(JButton button) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        row.setBackground(WHITE);
+        row.add(button);
+        return row;
+    }
+
     private JTextField createTextField() {
         JTextField field = new JTextField();
         field.setFont(INPUT_FONT);
         field.setForeground(TEXT);
         field.setCaretColor(PURPLE);
         field.setBackground(new Color(250, 249, 252));
-        field.setPreferredSize(new Dimension(200, 44));
+        field.setPreferredSize(new Dimension(200, 40));
         field.setBorder(BorderFactory.createCompoundBorder(
                 new RoundedBorder(BORDER, 10),
-                new EmptyBorder(0, 13, 0, 13)
-        ));
+                new EmptyBorder(0, 13, 0, 13)));
         return field;
     }
 
     private void styleButton(JButton button, boolean primary) {
-        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        button.setForeground(primary ? WHITE : PURPLE);
-        button.setBackground(primary ? PURPLE : LIGHT_PURPLE);
-        button.setFocusPainted(false);
-        button.setBorder(new EmptyBorder(12, 26, 12, 26));
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setContentAreaFilled(false);
-        button.setOpaque(false);
         button.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
             @Override
             public void paint(Graphics g, JComponent c) {
@@ -364,6 +368,46 @@ public class DepartmentPanel extends JPanel {
                 super.paint(g, c);
             }
         });
+        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        button.setForeground(primary ? WHITE : PURPLE);
+        button.setBackground(primary ? PURPLE : LIGHT_PURPLE);
+        button.setFocusPainted(false);
+        button.setBorder(new EmptyBorder(10, 24, 10, 24));
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setOpaque(false);
+    }
+
+    // ================= SCROLLABLE PAGE =================
+
+    /**
+     * Follows the window width, fills a tall window, and scrolls in a short one.
+     */
+    private static class ScrollablePage extends JPanel implements Scrollable {
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visible, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visible, int orientation, int direction) {
+            return visible.height;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return getParent().getHeight() > getPreferredSize().height;
+        }
     }
 
     // ================= ROUNDED BORDER =================
