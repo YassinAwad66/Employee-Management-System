@@ -60,7 +60,7 @@ public class ViewEmployeesPanel extends JPanel {
         employeeTable.setBackground(Color.WHITE);
         employeeTable.setForeground(txt);
         employeeTable.setSelectionBackground(prpl);
-        employeeTable.setSelectionForeground(txt);
+        employeeTable.setSelectionForeground(Color.WHITE);
         employeeTable.setGridColor(darkprpl);
         employeeTable.setShowGrid(true);
         
