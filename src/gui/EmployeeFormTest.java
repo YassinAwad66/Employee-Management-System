@@ -19,7 +19,7 @@ public class EmployeeFormTest {
         frame.setSize(600, 500);
         frame.setLocationRelativeTo(null);
 
-        EmployeeFormPanel form = new EmployeeFormPanel();
+        AddEmployeePanel form = new AddEmployeePanel(null, null, null);
 
         frame.add(form);
         frame.setVisible(true);

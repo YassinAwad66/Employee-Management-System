@@ -209,10 +209,10 @@ public class DepartmentPanel extends JPanel {
 
         try {
             departmentManager.addDepartment(id, name);
-        } catch (ValidationException ex) {
+        } catch (DuplicateEntryException ex) {
             showError(ex.getMessage());
             return;
-        } catch(DuplicateEntryException ex){
+        } catch(ValidationException ex){
             showError(ex.getMessage());
             return;
         }

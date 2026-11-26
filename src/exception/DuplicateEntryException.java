@@ -1,6 +1,6 @@
 package exception;
 
-public class DuplicateEntryException extends Exception {
+public class DuplicateEntryException extends ValidationException {
 
     public DuplicateEntryException(String message) {
         super(message);

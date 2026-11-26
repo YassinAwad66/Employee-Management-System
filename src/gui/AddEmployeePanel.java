@@ -42,7 +42,7 @@ public class AddEmployeePanel extends JPanel {
         clearButton = new JButton("Clear");
 
         // Style buttons
-        addButton.setBackground(new Color(105, 76, 180));
+        addButton.setBackground(new Color(0,0,0));
         addButton.setForeground(Color.WHITE);
 
         clearButton.setBackground(Color.WHITE);

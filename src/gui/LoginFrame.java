@@ -1,8 +1,6 @@
 package gui;
 
 import java.awt.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
@@ -125,17 +123,7 @@ public class LoginFrame extends JFrame {
         btnLogin.addActionListener(e -> handleLogin());
         btnExit.addActionListener(e -> handleExit());
 
-        KeyAdapter enterKey = new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    handleLogin();
-                }
-            }
-        };
-        txtUsername.addKeyListener(enterKey);
-        txtPassword.addKeyListener(enterKey);
-
+        
         JPanel buttons = new JPanel(new GridLayout(1, 2, 12, 0));
         buttons.setBackground(WHITE);
         buttons.add(btnLogin);

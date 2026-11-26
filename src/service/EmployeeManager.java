@@ -6,6 +6,7 @@ import java.io.IOException;
 
 import model.Employee;
 import storage.FileHandler;
+import exception.DuplicateEntryException;
 import exception.ValidationException;
 
 public class EmployeeManager {
@@ -43,7 +44,7 @@ public class EmployeeManager {
             throw new ValidationException("Invalid department: " + employee.getDepartmentName());
         }
         if (idExists(employee.getId())) {
-            throw new ValidationException("Employee ID already exists: " + employee.getId());
+            throw new DuplicateEntryException("Employee ID already exists: " + employee.getId());
         }
         employees.add(employee);
         saveToFile();

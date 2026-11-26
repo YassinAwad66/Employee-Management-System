@@ -22,8 +22,7 @@ public class ViewEmployeesPanel extends JPanel {
         this.onChanged = onChanged;
         refreshButton = new JButton("Refresh");
         deleteButton = new JButton("Delete");
-        employeeTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        employeeTable.setFillsViewportHeight(true);
+        
         setLayout(new BorderLayout(15, 15));
         setBackground(new Color(245, 247, 250));
 
@@ -32,6 +31,8 @@ public class ViewEmployeesPanel extends JPanel {
 
         tableModel = new EmployeeTableModel(employeeManager);
         employeeTable = new JTable(tableModel);
+        employeeTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        employeeTable.setFillsViewportHeight(true);
         JScrollPane scrollPane = new JScrollPane(employeeTable);
         add(scrollPane, BorderLayout.CENTER);
 
@@ -75,19 +76,22 @@ public class ViewEmployeesPanel extends JPanel {
         int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete " + emp.getFullName() + "?",
                 "Confirm Delete", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
-            boolean deleted = employeeManager.deleteEmployee(emp.getId());
+            boolean deleted = false;
+            try {
+                deleted = employeeManager.deleteEmployee(emp.getId());
+            } catch (java.io.IOException ex) {
+                JOptionPane.showMessageDialog(this, "Error deleting employee: " + ex.getMessage());
+                return;
+            }
             if (deleted) {
                 refreshTable();
-
                 if (onChanged != null) {
                     onChanged.run();
                 }
-            
-        } else {
-            JOptionPane.showMessageDialog(this, "Employee deletion failed.");
+            } else {
+                JOptionPane.showMessageDialog(this, "Employee deletion failed.");
+            }
         }
-    }
-
     }
 
     public void handleFilter() {
