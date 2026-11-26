@@ -57,7 +57,7 @@ public class ViewEmployeesPanel extends JPanel {
         employeeTable.setFillsViewportHeight(true);
         employeeTable.setFont(new Font("Arial", Font.PLAIN, 14));
         employeeTable.setRowHeight(32);
-        employeeTable.setBackground(lightprpl);
+        employeeTable.setBackground(Color.WHITE);
         employeeTable.setForeground(txt);
         employeeTable.setSelectionBackground(prpl);
         employeeTable.setSelectionForeground(txt);
