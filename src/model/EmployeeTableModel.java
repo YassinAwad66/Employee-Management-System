@@ -41,15 +41,15 @@ public Object getValueAt(int rowIndex, int columnIndex) {
     Employee emp = employees.get(rowIndex);
     switch (columnIndex) {
         case 0:
-            return emp.getId();
+            return " " + emp.getId();
         case 1:
-            return emp.getFullName();
+            return " " + emp.getFullName();
         case 2:
-            return emp.calculateSalary();
+            return " " + emp.calculateSalary();
         case 3:
-            return emp.getDepartmentName();
+            return " " + emp.getDepartmentName();
         case 4:
-            return emp.getPosition();
+            return " " + emp.getPosition();
         default:
             return "";
         }

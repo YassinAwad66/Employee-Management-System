@@ -24,6 +24,11 @@ public class SearchPanel extends JPanel {
     public SearchPanel(EmployeeManager employeeManager) {
         this.employeeManager = employeeManager;
         cmbSearchBy = new JComboBox<>(new String[] { "ID", "Name", "Department" });
+        cmbSearchBy.setFont(new Font("Arial", Font.PLAIN, 15));
+        cmbSearchBy.setBackground(Color.WHITE);
+        cmbSearchBy.setForeground(txt);
+        cmbSearchBy.setBorder(BorderFactory.createLineBorder(prpl));
+        cmbSearchBy.setPreferredSize(new Dimension(120, 30));
 
         txtSearch = new JTextField(15);
         txtSearch.setFont(new Font("Arial", Font.PLAIN, 15));
@@ -62,7 +67,7 @@ public class SearchPanel extends JPanel {
         resultsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         resultsTable.setFillsViewportHeight(true);
         resultsTable.getTableHeader().setBackground(prpl);
-        resultsTable.getTableHeader().setForeground(Color.WHITE);
+        resultsTable.getTableHeader().setForeground(darkprpl);
         resultsTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 14));
         resultsTable.getTableHeader().setPreferredSize(new Dimension(0, 40));
         resultsTable.setShowGrid(true);
