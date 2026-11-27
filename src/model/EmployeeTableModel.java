@@ -17,7 +17,7 @@ public class EmployeeTableModel extends AbstractTableModel{
     }
     @Override 
     public int  getColumnCount(){
-        return 5;
+        return 6;
     }
     @Override
 public String getColumnName(int column) {
@@ -27,11 +27,13 @@ public String getColumnName(int column) {
         case 1:
             return "Full Name";
         case 2:
-            return "Salary";
+            return "Age";
         case 3:
             return "Department Name";
         case 4:
             return "Position";
+        case 5:
+            return "Salary";
         default:
             return "";
         }
@@ -45,11 +47,13 @@ public Object getValueAt(int rowIndex, int columnIndex) {
         case 1:
             return " " + emp.getFullName();
         case 2:
-            return " " + emp.calculateSalary();
+            return " " + emp.getAge();
         case 3:
             return " " + emp.getDepartmentName();
         case 4:
             return " " + emp.getPosition();
+        case 5:
+            return " " + emp.calculateSalary();
         default:
             return "";
         }
