@@ -1,596 +1,344 @@
 package gui;
 
+import exception.ValidationException;
 import java.awt.*;
 import java.awt.event.ItemEvent;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-
-import exception.ValidationException;
-import model.Employee;
-import model.EmployeeFactory;
-import model.FullTimeEmployee;
-import model.PartTimeEmployee;
+import model.*;
 import service.DepartmentManager;
 import validation.Validator;
 
 public class EmployeeFormPanel extends JPanel {
 
-    // ================= COLORS =================
-
     private static final Color BG = new Color(246, 245, 250);
     private static final Color WHITE = Color.WHITE;
     private static final Color PURPLE = new Color(105, 76, 180);
     private static final Color TEXT = new Color(55, 55, 65);
-    private static final Color MUTED = new Color(130, 130, 145);
+    private static final Color BORDER = new Color(220, 218, 230);
 
-    // ================= DEPENDENCIES =================
+    private final DepartmentManager dm;
+    private final boolean profile;
 
-    private final DepartmentManager departmentManager;
-    private final boolean profileStyle;
+    private final JTextField id, name, age, position;
+    private final JTextField salary, bonus, rate, hours;
 
-    // ================= PERSONAL INFORMATION =================
+    private final JComboBox<String> department = new JComboBox<>();
+    private final JComboBox<String> type =
+            new JComboBox<>(EmployeeFactory.getSupportedTypes());
 
-    private JTextField idField;
-    private JTextField nameField;
-    private JTextField ageField;
-    private JTextField positionField;
+    private final CardLayout cards = new CardLayout();
+    private final JPanel salaryPanel = new JPanel(cards);
 
-    private JComboBox<String> departmentCombo;
-    private JComboBox<String> typeCombo;
+    // Constructors
 
-    // ================= FULL-TIME FIELDS =================
+    public EmployeeFormPanel() { this(null); }
 
-    private JTextField basicSalaryField;
-    private JTextField bonusField;
+    public EmployeeFormPanel(DepartmentManager dm) { this(dm, false); }
 
-    // ================= PART-TIME FIELDS =================
-
-    private JTextField hourlyRateField;
-    private JTextField hoursWorkedField;
-
-    // ================= SALARY CARDS =================
-
-    private CardLayout salaryCardLayout;
-    private JPanel salaryCards;
-
-    // ================= CONSTRUCTORS =================
-
-    public EmployeeFormPanel(DepartmentManager departmentManager) {
-        this(departmentManager, false);
-    }
-
-    // Profile style is used only by the Update screen; Add keeps its layout.
-    public EmployeeFormPanel(DepartmentManager departmentManager, boolean profileStyle) {
-        this.departmentManager = departmentManager;
-        this.profileStyle = profileStyle;
+    public EmployeeFormPanel(DepartmentManager dm, boolean profile) {
+        this.dm = dm;
+        this.profile = profile;
 
         setLayout(new BorderLayout(0, 15));
         setBackground(BG);
-        setBorder(new EmptyBorder(20, 20, 20, 20));
+        setBorder(profile ? new EmptyBorder(4, 2, 4, 2)
+                          : new EmptyBorder(20, 20, 20, 20));
 
-        initializeComponents();
-        if (profileStyle) buildProfileForm();
-        else buildForm();
+        id = textField();
+        name = textField();
+        age = textField();
+        position = textField();
+        salary = textField();
+        bonus = textField();
+        rate = textField();
+        hours = textField();
+
+        style(department);
+        style(type);
+
+        buildForm();
+
+        type.addItemListener(e -> {
+            if (e.getStateChange() == ItemEvent.SELECTED)
+                showSalary();
+        });
 
         reloadDepartments();
-        onTypeChanged();
+        showSalary();
     }
 
-    // Compatibility constructor for GUI preview/testing.
-    public EmployeeFormPanel() {
-        this(null);
-    }
-
-    // ================= INITIALIZATION =================
-
-    private void initializeComponents() {
-
-        idField = createTextField();
-        nameField = createTextField();
-        ageField = createTextField();
-        positionField = createTextField();
-
-        departmentCombo = new JComboBox<>();
-        styleComboBox(departmentCombo);
-
-        typeCombo = new JComboBox<>(EmployeeFactory.getSupportedTypes());
-        styleComboBox(typeCombo);
-
-        basicSalaryField = createTextField();
-        bonusField = createTextField();
-
-        hourlyRateField = createTextField();
-        hoursWorkedField = createTextField();
-
-        salaryCardLayout = new CardLayout();
-        salaryCards = new JPanel(salaryCardLayout);
-        salaryCards.setBackground(WHITE);
-    }
-
-    // ================= FORM DESIGN =================
+    // Form Design
 
     private void buildForm() {
+        JPanel main = new JPanel();
+        main.setLayout(new BoxLayout(main, BoxLayout.Y_AXIS));
+        main.setBackground(BG);
+        if (profile) main.setOpaque(false);
 
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setBackground(BG);
+        JPanel personal = section(profile
+                ? "01   Personal Information" : "Personal Information");
 
-        // Personal Information
-        JPanel personalPanel = createSection("Personal Information");
+        addField(personal, "Employee ID", id);
+        addField(personal, "Full Name", name);
+        addField(personal, "Age", age);
 
-        addField(personalPanel, "Employee ID", idField);
-        addField(personalPanel, "Full Name", nameField);
-        addField(personalPanel, "Age", ageField);
-        addField(personalPanel, "Job Position", positionField);
+        if (!profile)
+            addField(personal, "Job Position", position);
 
-        // Employment Information
-        JPanel employmentPanel = createSection("Employment Information");
+        JPanel job = section(profile
+                ? "02   Job Details" : "Employment Information");
 
-        addField(employmentPanel, "Department", departmentCombo);
-        addField(employmentPanel, "Employee Type", typeCombo);
+        addField(job, "Department", department);
 
-        // Salary Information
-        JPanel salaryPanel = createSection("Salary Information");
-        salaryPanel.setLayout(new BorderLayout(15, 12));
+        if (profile)
+            addField(job, "Position", position);
+
+        addField(job, "Employee Type", type);
+
+        JPanel full = salaryCard("Basic Salary", salary, "Bonus", bonus);
+        JPanel part = salaryCard("Hourly Rate", rate, "Hours Worked", hours);
+
         salaryPanel.setBackground(WHITE);
+        salaryPanel.add(full, "Full-Time");
+        salaryPanel.add(part, "Part-Time");
 
-        buildSalaryCards();
+        JPanel payment = card();
+        payment.setLayout(new BorderLayout(profile ? 0 : 15,
+                                          profile ? 14 : 12));
 
-        JPanel salaryContent = new JPanel(new BorderLayout());
-        salaryContent.setBackground(WHITE);
-        salaryContent.add(salaryCards, BorderLayout.CENTER);
-        JLabel salaryTitle = new JLabel("Salary Information");
-        salaryTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        salaryTitle.setForeground(PURPLE);
+        payment.add(label(profile ? "03   Salary Details"
+                : "Salary Information", profile ? 14 : 16, PURPLE),
+                BorderLayout.NORTH);
 
-        salaryPanel.add(salaryTitle, BorderLayout.NORTH);
-        salaryPanel.add(salaryContent, BorderLayout.CENTER);
+        payment.add(salaryPanel, BorderLayout.CENTER);
 
-        mainPanel.add(personalPanel);
-        mainPanel.add(Box.createVerticalStrut(15));
+        for (JPanel p : new JPanel[]{personal, job, payment}) {
+            if (profile) p.setAlignmentX(Component.LEFT_ALIGNMENT);
+            main.add(p);
 
-        mainPanel.add(employmentPanel);
-        mainPanel.add(Box.createVerticalStrut(15));
-
-        mainPanel.add(salaryPanel);
-
-        add(mainPanel, BorderLayout.CENTER);
-
-        typeCombo.addItemListener(event -> {
-            if (event.getStateChange() == ItemEvent.SELECTED) {
-                onTypeChanged();
-            }
-        });
-    }
-
-    // Compact card layout for the Update screen only.
-    private void buildProfileForm() {
-        setBorder(new EmptyBorder(4, 2, 4, 2));
-        setBackground(BG);
-        buildSalaryCards();
-        JPanel details = new JPanel();
-        details.setOpaque(false);
-        details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
-
-        JPanel personal = profileCard("01   Personal Information",
-                "Employee ID", idField, "Full Name", nameField,
-                "Age", ageField);
-        JPanel job = profileCard("02   Job Details",
-                "Department", departmentCombo, "Position", positionField,
-                "Employee Type", typeCombo);
-        JPanel salary = profileCard("03   Salary Details");
-        salary.add(salaryCards, BorderLayout.CENTER);
-
-        for (JPanel section : new JPanel[]{personal, job, salary}) {
-            section.setAlignmentX(Component.LEFT_ALIGNMENT);
-            details.add(section);
-            details.add(Box.createVerticalStrut(12));
+            if (profile || p != payment)
+                main.add(Box.createVerticalStrut(profile ? 12 : 15));
         }
-        add(details, BorderLayout.NORTH);
-        typeCombo.addItemListener(e -> {
-            if (e.getStateChange() == ItemEvent.SELECTED) onTypeChanged();
-        });
+
+        add(main, profile ? BorderLayout.NORTH : BorderLayout.CENTER);
     }
 
-    private JPanel profileCard(String heading, Object... fields) {
-        JPanel card = new JPanel(new BorderLayout(0, 14));
-        card.setBackground(WHITE);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(230, 226, 239)),
-                new EmptyBorder(16, 17, 17, 17)));
+    private JPanel card() {
+        JPanel panel = new JPanel();
+        panel.setBackground(WHITE);
 
-        JLabel title = new JLabel(heading);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        title.setForeground(PURPLE);
-        card.add(title, BorderLayout.NORTH);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(profile
+                        ? new Color(230, 226, 239)
+                        : new Color(230, 228, 238)),
+                profile ? new EmptyBorder(16, 17, 17, 17)
+                        : new EmptyBorder(18, 18, 18, 18)));
 
-        if (fields.length > 0) {
+        return panel;
+    }
+
+    private JPanel section(String title) {
+        JPanel panel = card();
+
+        if (profile) {
+            panel.setLayout(new BorderLayout(0, 14));
+            panel.add(label(title, 14, PURPLE), BorderLayout.NORTH);
+
             JPanel grid = new JPanel(new GridLayout(0, 2, 12, 12));
             grid.setOpaque(false);
-            for (int i = 0; i < fields.length; i += 2) {
-                grid.add(createFieldPanel((String) fields[i], (JComponent) fields[i + 1]));
-            }
-            card.add(grid, BorderLayout.CENTER);
+            panel.add(grid, BorderLayout.CENTER);
+        } else {
+            panel.setLayout(new GridLayout(0, 2, 15, 12));
+            panel.add(label(title, 16, PURPLE));
+            panel.add(new JLabel(""));
         }
-        return card;
+
+        return panel;
     }
 
-    // ================= SALARY CARDS =================
+    private void addField(JPanel panel, String title, JComponent field) {
+        JPanel row = new JPanel(new BorderLayout(0, 7));
+        row.setBackground(WHITE);
 
-    private void buildSalaryCards() {
+        row.add(label(title, 12, TEXT), BorderLayout.NORTH);
+        row.add(field, BorderLayout.CENTER);
 
-        // Full-Time Card
-        JPanel fullTimePanel = new JPanel(new GridLayout(profileStyle ? 1 : 2, profileStyle ? 2 : 1, 12, 12));
-        fullTimePanel.setBackground(WHITE);
-
-        JPanel basicSalaryPanel = createFieldPanel("Basic Salary", basicSalaryField);
-        JPanel bonusPanel = createFieldPanel("Bonus", bonusField);
-
-        fullTimePanel.add(basicSalaryPanel);
-        fullTimePanel.add(bonusPanel);
-
-        // Part-Time Card
-        JPanel partTimePanel = new JPanel(new GridLayout(profileStyle ? 1 : 2, profileStyle ? 2 : 1, 12, 12));
-        partTimePanel.setBackground(WHITE);
-
-        JPanel hourlyRatePanel = createFieldPanel("Hourly Rate", hourlyRateField);
-        JPanel hoursPanel = createFieldPanel("Hours Worked", hoursWorkedField);
-
-        partTimePanel.add(hourlyRatePanel);
-        partTimePanel.add(hoursPanel);
-
-        salaryCards.add(fullTimePanel, "Full-Time");
-        salaryCards.add(partTimePanel, "Part-Time");
-    }
-
-    private void onTypeChanged() {
-
-        String selectedType = getEmployeeType();
-
-        if ("Full-Time".equalsIgnoreCase(selectedType)) {
-            salaryCardLayout.show(salaryCards, "Full-Time");
-
-        } else if ("Part-Time".equalsIgnoreCase(selectedType)) {
-            salaryCardLayout.show(salaryCards, "Part-Time");
+        if (panel.getLayout() instanceof BorderLayout) {
+            BorderLayout layout = (BorderLayout) panel.getLayout();
+            JPanel grid = (JPanel) layout.getLayoutComponent(BorderLayout.CENTER);
+            grid.add(row);
+        } else {
+            panel.add(row);
         }
     }
 
-    // ================= DEPARTMENTS =================
+    private JPanel salaryCard(String a, JTextField first,
+                              String b, JTextField second) {
+
+        JPanel panel = new JPanel(new GridLayout(0, profile ? 2 : 1, 12, 12));
+        panel.setBackground(WHITE);
+
+        addField(panel, a, first);
+        addField(panel, b, second);
+
+        return panel;
+    }
+
+    private void showSalary() {
+        String selected = getEmployeeType();
+
+        if ("Full-Time".equalsIgnoreCase(selected))
+            cards.show(salaryPanel, "Full-Time");
+        else if ("Part-Time".equalsIgnoreCase(selected))
+            cards.show(salaryPanel, "Part-Time");
+    }
+
+    // Departments
 
     public void reloadDepartments() {
-
-        if (departmentManager == null) {
-            return;
-        }
-
-        reloadDepartments(departmentManager.getDepartmentNames());
+        if (dm != null)
+            reloadDepartments(dm.getDepartmentNames());
     }
 
-    // Kept for compatibility with existing GUI code.
-    public void reloadDepartments(String[] departments) {
+    public void reloadDepartments(String[] names) {
+        String selected = getDepartment();
+        department.removeAllItems();
 
-        Object selected = departmentCombo.getSelectedItem();
+        if (names == null) return;
 
-        departmentCombo.removeAllItems();
+        for (String n : names)
+            if (n != null && !n.trim().isEmpty())
+                department.addItem(n.trim());
 
-        if (departments == null) {
-            return;
-        }
-
-        for (String department : departments) {
-            if (department != null && !department.trim().isEmpty()) {
-                departmentCombo.addItem(department.trim());
-            }
-        }
-
-        if (selected != null) {
-            for (int i = 0; i < departmentCombo.getItemCount(); i++) {
-                if (departmentCombo.getItemAt(i).equals(selected)) {
-                    departmentCombo.setSelectedItem(selected);
-                    break;
-                }
-            }
-        }
+        if (selected != null)
+            department.setSelectedItem(selected);
     }
-    // ================= BUILD EMPLOYEE =================
+
+    // Create Employee
 
     public Employee buildEmployee() throws ValidationException {
+        if (dm == null)
+            throw new ValidationException("Department manager is not initialized.");
 
-        if (departmentManager == null) {
-            throw new ValidationException(
-                    "Department manager is not initialized.");
-        }
+        int i = Validator.parseId(getEmployeeId());
+        String n = Validator.requireNotEmpty(getEmployeeName(), "Full Name");
+        int a = Validator.parseAge(getAge());
+        String p = Validator.requireNotEmpty(getJobTitle(), "Job Position");
+        String d = Validator.requireValidDepartment(getDepartment(), dm);
+        String t = Validator.requireSupportedType(getEmployeeType());
 
-        int id = Validator.parseId(getEmployeeId());
+        double first, second;
 
-        String name = Validator.requireNotEmpty(
-                getEmployeeName(), "Full Name");
-
-        int age = Validator.parseAge(getAge());
-
-        String position = Validator.requireNotEmpty(
-                getJobTitle(), "Job Position");
-
-        String department = Validator.requireValidDepartment(
-                getDepartment(), departmentManager);
-
-        String type = Validator.requireSupportedType(
-                getEmployeeType());
-
-        double firstSalaryParameter;
-        double secondSalaryParameter;
-
-        if ("Full-Time".equalsIgnoreCase(type)) {
-
-            firstSalaryParameter = Validator.parseNonNegativeDouble(
-                    getBasicSalary(), "Basic Salary");
-
-            secondSalaryParameter = Validator.parseNonNegativeDouble(
-                    getBonus(), "Bonus");
-
-        } else if ("Part-Time".equalsIgnoreCase(type)) {
-
-            firstSalaryParameter = Validator.parseNonNegativeDouble(
-                    getHourlyRate(), "Hourly Rate");
-
-            secondSalaryParameter = Validator.parseNonNegativeDouble(
-                    getHoursWorked(), "Hours Worked");
-
+        if ("Full-Time".equalsIgnoreCase(t)) {
+            first = Validator.parseNonNegativeDouble(getBasicSalary(), "Basic Salary");
+            second = Validator.parseNonNegativeDouble(getBonus(), "Bonus");
+        } else if ("Part-Time".equalsIgnoreCase(t)) {
+            first = Validator.parseNonNegativeDouble(getHourlyRate(), "Hourly Rate");
+            second = Validator.parseNonNegativeDouble(getHoursWorked(), "Hours Worked");
         } else {
-
-            throw new ValidationException(
-                    "Unsupported employee type: " + type);
+            throw new ValidationException("Unsupported employee type: " + t);
         }
 
-        return EmployeeFactory.create(
-                type,
-                id,
-                name,
-                age,
-                department,
-                position,
-                firstSalaryParameter,
-                secondSalaryParameter);
+        return EmployeeFactory.create(t, i, n, a, d, p, first, second);
     }
 
-    // ================= LOAD EMPLOYEE =================
+    // Load Employee
 
-    public void loadEmployee(Employee employee) {
+    public void loadEmployee(Employee e) {
+        if (e == null) return;
 
-        if (employee == null) {
-            return;
+        loadEmployeeData(e.getId(), e.getFullName(), e.getAge(),
+                e.getPosition(), e.getDepartmentName(),
+                e.getEmployeeType(), null, null, null, null);
+
+        if (e instanceof FullTimeEmployee) {
+            FullTimeEmployee f = (FullTimeEmployee) e;
+            salary.setText(String.valueOf(f.getBasicSalary()));
+            bonus.setText(String.valueOf(f.getBonus()));
+        } else if (e instanceof PartTimeEmployee) {
+            PartTimeEmployee p = (PartTimeEmployee) e;
+            rate.setText(String.valueOf(p.getHourlyRate()));
+            hours.setText(String.valueOf(p.getHoursWorked()));
         }
-
-        idField.setText(String.valueOf(employee.getId()));
-        nameField.setText(employee.getFullName());
-        ageField.setText(String.valueOf(employee.getAge()));
-        positionField.setText(employee.getPosition());
-
-        departmentCombo.setSelectedItem(
-                employee.getDepartmentName());
-
-        String type = employee.getEmployeeType();
-
-        typeCombo.setSelectedItem(type);
-
-        if (employee instanceof FullTimeEmployee) {
-
-            FullTimeEmployee fullTime = (FullTimeEmployee) employee;
-
-            basicSalaryField.setText(
-                    String.valueOf(fullTime.getBasicSalary()));
-
-            bonusField.setText(
-                    String.valueOf(fullTime.getBonus()));
-
-        } else if (employee instanceof PartTimeEmployee) {
-
-            PartTimeEmployee partTime = (PartTimeEmployee) employee;
-
-            hourlyRateField.setText(
-                    String.valueOf(partTime.getHourlyRate()));
-
-            hoursWorkedField.setText(
-                    String.valueOf(partTime.getHoursWorked()));
-        }
-
-        onTypeChanged();
     }
 
-    // ================= LOAD EMPLOYEE DATA =================
-
-    // Kept for compatibility with the previous implementation.
     public void loadEmployeeData(
-            int id,
-            String fullName,
-            int age,
-            String position,
-            String department,
-            String type,
-            Double basicSalary,
-            Double bonus,
-            Double hourlyRate,
-            Double hoursWorked) {
+            int i, String n, int a, String p, String d, String t,
+            Double s, Double b, Double r, Double h) {
 
-        idField.setText(String.valueOf(id));
-        nameField.setText(fullName);
-        ageField.setText(String.valueOf(age));
-        positionField.setText(position);
+        id.setText(String.valueOf(i));
+        name.setText(n);
+        age.setText(String.valueOf(a));
+        position.setText(p);
+        department.setSelectedItem(d);
+        type.setSelectedItem(t);
 
-        departmentCombo.setSelectedItem(department);
-        typeCombo.setSelectedItem(type);
+        if (s != null) salary.setText(s.toString());
+        if (b != null) bonus.setText(b.toString());
+        if (r != null) rate.setText(r.toString());
+        if (h != null) hours.setText(h.toString());
 
-        if (basicSalary != null) {
-            basicSalaryField.setText(String.valueOf(basicSalary));
-        }
-
-        if (bonus != null) {
-            bonusField.setText(String.valueOf(bonus));
-        }
-
-        if (hourlyRate != null) {
-            hourlyRateField.setText(String.valueOf(hourlyRate));
-        }
-
-        if (hoursWorked != null) {
-            hoursWorkedField.setText(String.valueOf(hoursWorked));
-        }
-
-        onTypeChanged();
+        showSalary();
     }
 
-    // ================= ID EDITING =================
-
-    public void setIdEditable(boolean editable) {
-        idField.setEditable(editable);
-        idField.setBackground(editable ? WHITE : new Color(235, 235, 240));
-    }
-
-    // ================= CLEAR FORM =================
+    // Clear and Edit
 
     public void clearForm() {
+        for (JTextField f : new JTextField[]{
+                id, name, age, position, salary, bonus, rate, hours})
+            f.setText("");
 
-        idField.setText("");
-        nameField.setText("");
-        ageField.setText("");
-        positionField.setText("");
+        if (department.getItemCount() > 0)
+            department.setSelectedIndex(0);
 
-        basicSalaryField.setText("");
-        bonusField.setText("");
+        if (type.getItemCount() > 0)
+            type.setSelectedIndex(0);
 
-        hourlyRateField.setText("");
-        hoursWorkedField.setText("");
-
-        if (departmentCombo.getItemCount() > 0) {
-            departmentCombo.setSelectedIndex(0);
-        }
-
-        if (typeCombo.getItemCount() > 0) {
-            typeCombo.setSelectedIndex(0);
-        }
-
-        onTypeChanged();
+        showSalary();
     }
 
-    // ================= GETTERS =================
-
-    public String getEmployeeId() {
-        return idField.getText().trim();
+    public void setIdEditable(boolean editable) {
+        id.setEditable(editable);
+        id.setBackground(editable ? WHITE : new Color(235, 235, 240));
     }
 
-    public String getEmployeeName() {
-        return nameField.getText().trim();
+    // Getters
+
+    public String getEmployeeId() { return id.getText().trim(); }
+    public String getEmployeeName() { return name.getText().trim(); }
+    public String getAge() { return age.getText().trim(); }
+    public String getJobTitle() { return position.getText().trim(); }
+    public String getBasicSalary() { return salary.getText().trim(); }
+    public String getBonus() { return bonus.getText().trim(); }
+    public String getHourlyRate() { return rate.getText().trim(); }
+    public String getHoursWorked() { return hours.getText().trim(); }
+    public String getDepartment() { return (String) department.getSelectedItem(); }
+    public String getEmployeeType() { return (String) type.getSelectedItem(); }
+
+    // UI Helpers
+
+    private JLabel label(String text, int size, Color color) {
+        JLabel l = new JLabel(text);
+        l.setFont(new Font("Segoe UI", Font.BOLD, size));
+        l.setForeground(color);
+        return l;
     }
 
-    public String getAge() {
-        return ageField.getText().trim();
+    private void style(JComponent c) {
+        c.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        c.setForeground(TEXT);
+        c.setBackground(WHITE);
+        c.setBorder(BorderFactory.createLineBorder(BORDER));
     }
 
-    public String getJobTitle() {
-        return positionField.getText().trim();
-    }
+    private JTextField textField() {
+        JTextField f = new JTextField(profile ? 10 : 15);
+        style(f);
 
-    public String getDepartment() {
-        Object selected = departmentCombo.getSelectedItem();
-        return selected == null ? null : selected.toString();
-    }
+        f.setBorder(BorderFactory.createCompoundBorder(
+                f.getBorder(), new EmptyBorder(9, 10, 9, 10)));
 
-    public String getEmployeeType() {
-        Object selected = typeCombo.getSelectedItem();
-        return selected == null ? null : selected.toString();
-    }
-
-    public String getBasicSalary() {
-        return basicSalaryField.getText().trim();
-    }
-
-    public String getBonus() {
-        return bonusField.getText().trim();
-    }
-
-    public String getHourlyRate() {
-        return hourlyRateField.getText().trim();
-    }
-
-    public String getHoursWorked() {
-        return hoursWorkedField.getText().trim();
-    }
-
-    // ================= UI HELPERS =================
-
-    private JPanel createSection(String title) {
-
-        JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(0, 2, 15, 12));
-        panel.setBackground(WHITE);
-
-        panel.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(
-                                new Color(230, 228, 238)),
-                        new EmptyBorder(18, 18, 18, 18)));
-
-        JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        titleLabel.setForeground(PURPLE);
-
-        panel.add(titleLabel);
-        panel.add(new JLabel(""));
-
-        return panel;
-    }
-
-    private void addField(
-            JPanel parent,
-            String label,
-            JComponent component) {
-
-        parent.add(createFieldPanel(label, component));
-    }
-
-    private JPanel createFieldPanel(
-            String label,
-            JComponent component) {
-
-        JPanel panel = new JPanel(new BorderLayout(0, 7));
-        panel.setBackground(WHITE);
-
-        JLabel fieldLabel = new JLabel(label);
-        fieldLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        fieldLabel.setForeground(TEXT);
-
-        panel.add(fieldLabel, BorderLayout.NORTH);
-        panel.add(component, BorderLayout.CENTER);
-
-        return panel;
-    }
-
-    private JTextField createTextField() {
-
-        JTextField field = new JTextField(profileStyle ? 10 : 15);
-
-        field.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        field.setForeground(TEXT);
-        field.setBackground(WHITE);
-
-        field.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(
-                                new Color(220, 218, 230)),
-                        new EmptyBorder(9, 10, 9, 10)));
-
-        return field;
-    }
-
-    private void styleComboBox(JComboBox<String> combo) {
-
-        combo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        combo.setForeground(TEXT);
-        combo.setBackground(WHITE);
-
-        combo.setBorder(
-                BorderFactory.createLineBorder(
-                        new Color(220, 218, 230)));
+        return f;
     }
 }
