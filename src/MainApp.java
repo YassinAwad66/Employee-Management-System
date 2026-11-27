@@ -1,6 +1,6 @@
-import javax.swing.*;
 import gui.LoginFrame;
-
+import gui.ThemeDialog;
+import javax.swing.*;
 import service.*;
 import storage.FileHandler;
 
@@ -22,22 +22,22 @@ public class MainApp {
         try {
             departmentManager.loadFromFile();
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(null,
+            ThemeDialog.showWarning(
+                    null,
                     "Could not read the departments file:\n" + ex.getMessage()
-                            + "\nStarting with default departments.",
-                    "File Error", JOptionPane.WARNING_MESSAGE);
+                            + "\nStarting with default departments.");
         }
 
         try {
             employeeManager.loadFromFile();
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(null,
+            ThemeDialog.showWarning(
+                    null,
                     "Could not read the employees file:\n" + ex.getMessage()
-                            + "\nStarting with an empty employee list.",
-                    "File Error", JOptionPane.WARNING_MESSAGE);
+                            + "\nStarting with an empty employee list.");
         }
 
-        SwingUtilities.invokeLater(() ->
-                new LoginFrame(authService, employeeManager, departmentManager).setVisible(true));
+        SwingUtilities
+                .invokeLater(() -> new LoginFrame(authService, employeeManager, departmentManager).setVisible(true));
     }
 }

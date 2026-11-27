@@ -115,14 +115,14 @@ public class MainFrame extends JFrame {
         sidebar.setPreferredSize(new Dimension(245, 0));
         sidebar.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER), // right line
-                new EmptyBorder(28, 18, 25, 18)));                   // padding
+                new EmptyBorder(28, 18, 25, 18))); // padding
 
         sidebar.add(buildBrand());
         sidebar.add(Box.createVerticalStrut(40));
         sidebar.add(createLabel("MAIN MENU", Font.BOLD, 11, MUTED));
         sidebar.add(Box.createVerticalStrut(15));
 
-        String[] pages = {DASHBOARD, ADD, VIEW, SEARCH, UPDATE, DEPARTMENTS};
+        String[] pages = { DASHBOARD, ADD, VIEW, SEARCH, UPDATE, DEPARTMENTS };
 
         for (String page : pages) {
             JButton button = createNavButton(page);
@@ -210,7 +210,7 @@ public class MainFrame extends JFrame {
         button.setForeground(textColor);
         button.setBackground(WHITE);
         button.setHorizontalAlignment(SwingConstants.LEFT); // text position
-        button.setAlignmentX(Component.LEFT_ALIGNMENT);     // button position
+        button.setAlignmentX(Component.LEFT_ALIGNMENT); // button position
         button.setFocusPainted(false);
         button.setBorderPainted(false);
         button.setOpaque(true);
@@ -245,7 +245,7 @@ public class MainFrame extends JFrame {
         header.setBackground(WHITE);
         header.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER), // bottom line
-                new EmptyBorder(20, 28, 20, 28)));                   // padding
+                new EmptyBorder(20, 28, 20, 28))); // padding
         header.add(titlePanel, BorderLayout.WEST);
         header.add(createLabel("Administrator", Font.BOLD, 13, PURPLE), BorderLayout.EAST);
         return header;
@@ -282,9 +282,9 @@ public class MainFrame extends JFrame {
             pageTitle.setText(name);
             updateNavigationHighlight();
         } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Unable to load the selected page.\n" + ex.getMessage(),
-                    "Navigation Error", JOptionPane.ERROR_MESSAGE);
+            ThemeDialog.showError(
+                    this,
+                    "Unable to load the selected page.\n" + ex.getMessage());
         }
     }
 
@@ -303,12 +303,24 @@ public class MainFrame extends JFrame {
     // Reload the data of one page
     private void refreshPanel(String name) {
         switch (name) {
-            case DASHBOARD:   dashboardPanel.refreshStats();  break;
-            case ADD:         addPanel.refresh();             break;
-            case VIEW:        viewPanel.refreshTable();       break;
-            case SEARCH:      searchPanel.refresh();          break;
-            case UPDATE:      updatePanel.refresh();          break;
-            case DEPARTMENTS: departmentPanel.refreshTable(); break;
+            case DASHBOARD:
+                dashboardPanel.refreshStats();
+                break;
+            case ADD:
+                addPanel.refresh();
+                break;
+            case VIEW:
+                viewPanel.refreshTable();
+                break;
+            case SEARCH:
+                searchPanel.refresh();
+                break;
+            case UPDATE:
+                updatePanel.refresh();
+                break;
+            case DEPARTMENTS:
+                departmentPanel.refreshTable();
+                break;
         }
     }
 
@@ -322,16 +334,21 @@ public class MainFrame extends JFrame {
     // ================= LOGOUT =================
 
     private void handleLogout() {
-        int choice = JOptionPane.showConfirmDialog(this,
-                "Are you sure you want to log out?", "Confirm Logout",
-                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 
-        if (choice != JOptionPane.YES_OPTION) {
+        boolean confirmed = ThemeDialog.showConfirm(
+                this,
+                "Confirm Logout",
+                "Are you sure you want to log out?");
+
+        if (!confirmed) {
             return;
         }
 
         dispose();
-        SwingUtilities.invokeLater(() ->
-                new LoginFrame(authService, employeeManager, departmentManager).setVisible(true));
+
+        SwingUtilities.invokeLater(() -> new LoginFrame(
+                authService,
+                employeeManager,
+                departmentManager).setVisible(true));
     }
 }
