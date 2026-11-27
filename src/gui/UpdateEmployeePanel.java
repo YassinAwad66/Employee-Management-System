@@ -226,8 +226,7 @@ public class UpdateEmployeePanel extends JPanel {
         Employee rowEmployee = tableModel.getEmployeeAt(modelRow);
         Employee employee = rowEmployee == null ? null : employeeManager.findById(rowEmployee.getId());
         if (employee == null) {
-            JOptionPane.showMessageDialog(this, "Employee not found.", "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            ThemeDialog.showError(this, "Employee not found.");
             clearSelection();
             return;
         }
@@ -241,8 +240,7 @@ public class UpdateEmployeePanel extends JPanel {
     private void handleUpdate() {
         int viewRow = employeeTable.getSelectedRow();
         if (viewRow < 0) {
-            JOptionPane.showMessageDialog(this, "Select an employee first.",
-                    "No Employee Selected", JOptionPane.WARNING_MESSAGE);
+            ThemeDialog.showWarning(this, "Select an employee first.");
             return;
         }
         int modelRow = employeeTable.convertRowIndexToModel(viewRow);
@@ -251,8 +249,7 @@ public class UpdateEmployeePanel extends JPanel {
         int id = rowEmployee.getId();
         Employee existing = employeeManager.findById(id);
         if (existing == null) {
-            JOptionPane.showMessageDialog(this, "The employee no longer exists.",
-                    "Not Found", JOptionPane.ERROR_MESSAGE);
+            ThemeDialog.showError(this, "The employee no longer exists.");
             refresh();
             return;
         }
@@ -260,12 +257,11 @@ public class UpdateEmployeePanel extends JPanel {
         try {
             Employee updated = employeeForm.buildEmployee();
             if (updated.getId() != id) {
-                JOptionPane.showMessageDialog(this, "Employee ID cannot be changed.",
-                        "Invalid ID", JOptionPane.ERROR_MESSAGE);
+                ThemeDialog.showError(this, "Employee ID cannot be changed.");
                 return;
             }
-            if (!showUpdateDialog("Confirm Update",
-                    "Save changes to " + existing.getFullName() + "?", true)) return;
+            if (!ThemeDialog.showConfirm(this, "Confirm Update",
+                    "Save changes to " + existing.getFullName() + "?")) return;
 
             employeeManager.updateEmployee(id, updated);
             if (onDataChanged != null) onDataChanged.run();
@@ -278,66 +274,14 @@ public class UpdateEmployeePanel extends JPanel {
                 selectedLabel.setText("Editing: " + saved.getFullName() + "  |  ID: " + id);
                 selectedLabel.setForeground(PURPLE);
             }
-            showUpdateDialog("Update Successful",
-                    "Employee updated successfully!", false);
+            ThemeDialog.showSuccess(this, "Employee updated successfully!");
         } catch (ValidationException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(),
-                    "Validation Error", JOptionPane.WARNING_MESSAGE);
+            ThemeDialog.showWarning(this, ex.getMessage());
         } catch (IOException ex) {
-            JOptionPane.showMessageDialog(this, "Could not save changes: " + ex.getMessage(),
-                    "File Error", JOptionPane.ERROR_MESSAGE);
+            ThemeDialog.showError(this, "Could not save changes: " + ex.getMessage());
         } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(this, "Unexpected error: " + ex.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            ThemeDialog.showError(this, "Unexpected error: " + ex.getMessage());
         }
-    }
-
-    // Reusable purple dialog for confirmation and success.
-    private boolean showUpdateDialog(String title, String message, boolean confirm) {
-        JDialog dialog = new JDialog(
-                SwingUtilities.getWindowAncestor(this), Dialog.ModalityType.APPLICATION_MODAL);
-        dialog.setUndecorated(true);
-
-        JPanel content = new JPanel(new BorderLayout(0, 20));
-        content.setBackground(WHITE);
-        content.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER, 2),
-                new EmptyBorder(25, 30, 25, 30)));
-
-        JLabel heading = new JLabel(title);
-        heading.setFont(new Font("Segoe UI", Font.BOLD, 21));
-        heading.setForeground(PURPLE);
-
-        JLabel description = new JLabel(message);
-        description.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        description.setForeground(TEXT);
-
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        actions.setOpaque(false);
-        final boolean[] accepted = {false};
-
-        if (confirm) {
-            JButton cancel = button("Cancel", false);
-            cancel.addActionListener(e -> dialog.dispose());
-            actions.add(cancel);
-        }
-
-        JButton primary = button(confirm ? "Save Changes" : "Done", true);
-        primary.addActionListener(e -> {
-            accepted[0] = true;
-            dialog.dispose();
-        });
-        actions.add(primary);
-
-        content.add(heading, BorderLayout.NORTH);
-        content.add(description, BorderLayout.CENTER);
-        content.add(actions, BorderLayout.SOUTH);
-
-        dialog.setContentPane(content);
-        dialog.setSize(410, 190);
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
-        return accepted[0];
     }
 
     private void selectEmployeeById(int id) {
